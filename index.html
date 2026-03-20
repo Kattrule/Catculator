@@ -3,243 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Catculator</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="mobile-web-app-capable" content="yes">
-    
+    <title>Universal Pro Calc</title>
     <style>
-        :root {
-            --bg: #0f172a;
-            --panel: #1e293b;
-            --btn-dark: #334155;
-            --btn-num: #475569;
-            --accent-blue: #38bdf8;
-            --accent-green: #10b981;
-            --accent-red: #ef4444;
-            --text: #ffffff;
-            --text-muted: #94a3b8;
-        }
-
-        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
-        /* Header / Nav */
-        .top-bar { background: var(--panel); display: flex; padding: 10px; gap: 8px; }
-        .nav-btn { flex: 1; background: var(--btn-dark); border: none; color: var(--accent-blue); padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .nav-btn.active { background: var(--accent-blue); color: var(--bg); }
-
-        /* Display */
-        .display-container { padding: 30px 20px; text-align: right; flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-end; }
-        #input-display { font-size: 3rem; border: none; background: transparent; color: var(--text); width: 100%; text-align: right; outline: none; }
-        #preview { font-size: 1.5rem; color: var(--text-muted); min-height: 1.5rem; margin-top: 10px; }
-
-        /* Panels */
-        .panel { display: none; padding: 15px; flex-shrink: 0; }
-        .panel.active { display: block; }
-
-        /* Keyboard Grid */
-        .keys-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .btn { border: none; padding: 20px; border-radius: 12px; font-size: 1.5rem; font-weight: 500; cursor: pointer; transition: transform 0.1s; }
-        .btn:active { transform: scale(0.95); opacity: 0.8; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; background: #0f172a; color: white; overflow: hidden; }
+        .calculator { display: flex; flex-direction: column; height: 100%; width: 100%; }
         
-        .btn-num { background: var(--btn-num); color: white; }
-        .btn-op { background: var(--panel); color: var(--accent-blue); }
-        .btn-clear { background: var(--panel); color: var(--accent-red); }
-        .btn-equal { background: var(--accent-green); color: var(--bg); grid-column: span 1; }
+        .top-bar { display: flex; gap: 5px; padding: 10px; background: #1e293b; border-bottom: 1px solid #334155; }
+        .top-btn { background: #334155; border: 1px solid #475569; color: #38bdf8; padding: 10px 5px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; border: none; }
+        /* Markerad knapp när Avancerat är aktivt */
+        .top-btn.active { background: #38bdf8; color: #0f172a; }
 
-        /* History List */
-        .history-list { max-height: 400px; overflow-y: auto; }
-        .history-item { background: var(--panel); padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: right; border-left: 4px solid var(--accent-blue); }
-        .hist-eq { color: var(--text-muted); font-size: 0.9rem; }
-        .hist-res { color: var(--accent-green); font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+        .display-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; background: #0f172a; }
+        
+        .display-main { 
+            width: 100%; 
+            background: transparent; 
+            border: none; 
+            color: white; 
+            font-size: 3rem; 
+            text-align: right; 
+            outline: none; 
+            caret-color: #38bdf8;
+            padding: 0;
+        }
+        .display-main::selection { background: rgba(56, 189, 248, 0.3); }
 
-        /* Utility */
-        .hidden { display: none; }
+        .result-preview { text-align: right; color: #94a3b8; font-size: 1.4rem; min-height: 1.6rem; margin-top: 5px; }
+
+        .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: #0f172a; flex: 2.5; }
+        button { border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; box-shadow: 0 4px 0 #000; color: white; }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 0 #000; }
+        
+        .num-btn { background: #475569; } 
+        .operator { color: #38bdf8; background: #1e293b; }
+        .clear-btn { color: #ef4444; background: #1e293b; }
+        .equal-btn { background: #10b981; color: #0f172a; font-weight: bold; }
+
+        .conv-area { display: none; flex-direction: column; gap: 15px; padding: 15px; background: #0f172a; flex: 2.5; }
+        .conv-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+        .conv-input, .conv-select { flex: 1; padding: 15px; font-size: 1.2rem; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; box-sizing: border-box; outline: none; }
+        .conv-res-btn { background: #10b981; color: #0f172a; padding: 20px; text-align: center; border-radius: 10px; font-size: 1.4rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #047857; margin-top: auto; }
+        .conv-op-btn { background: #1e293b; color: #38bdf8; border: 1px solid #334155; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: 0.1s; box-shadow: 0 3px 0 #000; }
+        .fetch-btn { background: #38bdf8; color: #0f172a; font-size: 1rem; padding: 15px; flex: 0.8; border: none; border-radius: 8px; font-weight: bold; }
+
+        .panel { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 10; flex-direction: column; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #1e293b; }
     </style>
 </head>
 <body>
 
+<div class="calculator">
     <div class="top-bar">
-        <button class="nav-btn" onclick="toggleAdvanced(this)">AVANCERAT</button>
-        <button class="nav-btn" onclick="showPanel('keys')">KALK</button>
-        <button class="nav-btn" onclick="showPanel('history')">HISTORIK</button>
+        <button id="advToggleBtn" class="top-btn" onclick="toggleAdvanced()">Avancerat</button>
+        <button class="top-btn" onclick="toggleConverter()">Konvertera</button>
+        <button class="top-btn" onclick="togglePanel('histPanel')">Historik</button>
     </div>
 
     <div class="display-container">
-        <input type="text" id="input-display" placeholder="0" readonly>
-        <div id="preview"></div>
+        <input type="text" id="mainDisplay" class="display-main" placeholder="0" inputmode="none" autofocus>
+        <div class="result-preview" id="preview"></div>
     </div>
 
-    <div id="keys-panel" class="panel active">
-        <div class="keys-grid" id="main-keys">
-            <button class="btn btn-clear" onclick="clearDisplay()">C</button>
-            <button class="btn btn-op mode-swap" onclick="addChar(' % ')">%</button>
-            <button class="btn btn-op" onclick="smartParenthesis()">( )</button>
-            <button class="btn btn-op mode-swap" onclick="addChar('÷')">÷</button>
+    <div class="keys" id="mainKeys">
+        <button class="clear-btn" onclick="clearDisplay()">C</button>
+        <button id="op-1" class="operator" onclick="insertAtCursor(' % ')">%</button>
+        <button class="operator" onclick="insertSmartParenthesis()">( )</button>
+        <button id="op-2" class="operator" onclick="insertAtCursor('/')">÷</button>
+        
+        <button class="num-btn" onclick="insertAtCursor('7')">7</button>
+        <button class="num-btn" onclick="insertAtCursor('8')">8</button>
+        <button class="num-btn" onclick="insertAtCursor('9')">9</button>
+        <button id="op-3" class="operator" onclick="insertAtCursor('*')">×</button>
+        
+        <button class="num-btn" onclick="insertAtCursor('4')">4</button>
+        <button class="num-btn" onclick="insertAtCursor('5')">5</button>
+        <button class="num-btn" onclick="insertAtCursor('6')">6</button>
+        <button id="op-4" class="operator" onclick="insertAtCursor('-')">-</button>
+        
+        <button class="num-btn" onclick="insertAtCursor('1')">1</button>
+        <button class="num-btn" onclick="insertAtCursor('2')">2</button>
+        <button class="num-btn" onclick="insertAtCursor('3')">3</button>
+        <button id="op-5" class="operator" onclick="insertAtCursor('+')">+</button>
+        
+        <button class="num-btn" onclick="insertAtCursor('.')">.</button>
+        <button class="num-btn" onclick="insertAtCursor('0')">0</button>
+        <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
+        <button class="equal-btn" onclick="calculate()">=</button>
+    </div>
 
-            <button class="btn btn-num" onclick="addChar('7')">7</button>
-            <button class="btn btn-num" onclick="addChar('8')">8</button>
-            <button class="btn btn-num" onclick="addChar('9')">9</button>
-            <button class="btn btn-op mode-swap" onclick="addChar('×')">×</button>
-
-            <button class="btn btn-num" onclick="addChar('4')">4</button>
-            <button class="btn btn-num" onclick="addChar('5')">5</button>
-            <button class="btn btn-num" onclick="addChar('6')">6</button>
-            <button class="btn btn-op mode-swap" onclick="addChar('-')">-</button>
-
-            <button class="btn btn-num" onclick="addChar('1')">1</button>
-            <button class="btn btn-num" onclick="addChar('2')">2</button>
-            <button class="btn btn-num" onclick="addChar('3')">3</button>
-            <button class="btn btn-op mode-swap" onclick="addChar('+')">+</button>
-
-            <button class="btn btn-num" onclick="addChar('.')">.</button>
-            <button class="btn btn-num" onclick="addChar('0')">0</button>
-            <button class="btn btn-num" onclick="backspace()">⌫</button>
-            <button class="btn btn-equal" onclick="calculate()">=</button>
+    <div class="conv-area" id="convArea">
+        <div class="conv-row">
+            <select id="convFrom" class="conv-select" onchange="updateConvTo()"></select>
+            <span style="color:#94a3b8; font-size:1.5rem;">➔</span>
+            <select id="convTo" class="conv-select" onchange="runConv()"></select>
+        </div>
+        <div class="conv-row">
+            <input type="number" id="convInput" class="conv-input" placeholder="Värde..." oninput="runConv()">
+            <button class="fetch-btn" onclick="grabFromDisplay()">Hämta</button>
+        </div>
+        <div id="convResBtn" class="conv-res-btn" onclick="pasteConv()">Resultat: 0</div>
+        <div style="display: flex; gap: 8px; margin-top: 10px; height: 50px;">
+            <button class="top-btn clear-btn" style="flex: 1.5;" onclick="toggleConverter()">Stäng</button>
+            <button class="conv-op-btn" style="flex: 1;" onclick="pasteAndOp('+')">+</button>
+            <button class="conv-op-btn" style="flex: 1;" onclick="pasteAndOp('-')">-</button>
+            <button class="conv-op-btn" style="flex: 1;" onclick="pasteAndOp('×')">×</button>
+            <button class="conv-op-btn" style="flex: 1;" onclick="pasteAndOp('÷')">÷</button>
+            <button class="conv-op-btn equal-btn" style="flex: 1; border:none;" onclick="pasteAndCalc()">=</button>
         </div>
     </div>
+</div>
 
-    <div id="history-panel" class="panel">
-        <div id="history-container" class="history-list"></div>
-        <button class="nav-btn" style="width:100%; margin-top:10px; color:var(--accent-red)" onclick="clearHistory()">RENSA ALLT</button>
+<div class="panel" id="histPanel">
+    <div class="panel-header">
+        <h2>Historik</h2>
+        <div style="display:flex; gap:10px;">
+            <button class="top-btn clear-btn" onclick="clearAllHistory()">Rensa Allt</button>
+            <button class="top-btn" onclick="togglePanel('histPanel')">Stäng</button>
+        </div>
     </div>
+    <div id="historyList" style="flex:1; overflow-y:auto; padding:15px;"></div>
+</div>
 
-    <script>
-    // 1. Försök ladda historik direkt när sidan läses in
-    let historyData = [];
-    try {
-        const saved = localStorage.getItem('procalc_storage');
-        if (saved) {
-            historyData = JSON.parse(saved);
-            console.log("Historik laddad:", historyData);
-        }
-    } catch (e) {
-        console.error("Kunde inte ladda historik", e);
-        historyData = [];
-    }
-
-    let isAdvanced = false;
-    const display = document.getElementById('input-display');
+<script>
+    const input = document.getElementById('mainDisplay');
     const preview = document.getElementById('preview');
+    let historyData = [];
+    let isAdvanced = false;
 
-    // PWA Service Worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
+    // --- LADDA HISTORIK VID START ---
+    function loadHistory() {
+        try {
+            const saved = localStorage.getItem('procalc_history_data');
+            if (saved) {
+                historyData = JSON.parse(saved);
+                renderHistoryUI();
+            }
+        } catch(e) { console.error("Kunde inte ladda historik", e); }
     }
 
-    function showPanel(name) {
-        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        document.getElementById(name + '-panel').classList.add('active');
-        if(name === 'history') renderHistory();
-    }
-
-    function addChar(char) {
-        display.value += char;
-        livePreview();
-    }
-
-    function clearDisplay() {
-        display.value = '';
-        preview.innerText = '';
-    }
-
-    function backspace() {
-        display.value = display.value.slice(0, -1);
-        livePreview();
-    }
-
-    function smartParenthesis() {
-        const val = display.value;
-        const openCount = (val.match(/\(/g) || []).length;
-        const closeCount = (val.match(/\)/g) || []).length;
-        const lastChar = val.slice(-1);
-        if (openCount > closeCount && (/[0-9)]/.test(lastChar))) {
-            addChar(')');
-        } else {
-            addChar('(');
-        }
-    }
-
-    function toggleAdvanced(btn) {
+    // NY FUNKTION: Byt ut operatörerna mot avancerade funktioner
+    function toggleAdvanced() {
         isAdvanced = !isAdvanced;
-        btn.classList.toggle('active');
-        const ops = document.querySelectorAll('.mode-swap');
+        const btnToggle = document.getElementById('advToggleBtn');
+        const op1 = document.getElementById('op-1'); 
+        const op2 = document.getElementById('op-2'); 
+        const op3 = document.getElementById('op-3'); 
+        const op4 = document.getElementById('op-4'); 
+        const op5 = document.getElementById('op-5'); 
+
         if (isAdvanced) {
-            ops[0].innerText = 'sin'; ops[0].onclick = () => addChar('sin(');
-            ops[1].innerText = 'cos'; ops[1].onclick = () => addChar('cos(');
-            ops[2].innerText = '√'; ops[2].onclick = () => addChar('√(');
-            ops[3].innerText = 'π'; ops[3].onclick = () => addChar('π');
-            ops[4].innerText = '^'; ops[4].onclick = () => addChar('**');
+            btnToggle.classList.add('active');
+            op1.innerHTML = 'sin'; op1.onclick = () => insertAtCursor('Math.sin(');
+            op2.innerHTML = 'cos'; op2.onclick = () => insertAtCursor('Math.cos(');
+            op3.innerHTML = '√';   op3.onclick = () => insertAtCursor('Math.sqrt(');
+            op4.innerHTML = 'xʸ';  op4.onclick = () => insertAtCursor('**');
+            op5.innerHTML = 'π';   op5.onclick = () => insertAtCursor('Math.PI');
         } else {
-            ops[0].innerText = '%'; ops[0].onclick = () => addChar(' % ');
-            ops[1].innerText = '÷'; ops[1].onclick = () => addChar('÷');
-            ops[2].innerText = '×'; ops[2].onclick = () => addChar('×');
-            ops[3].innerText = '-'; ops[3].onclick = () => addChar('-');
-            ops[4].innerText = '+'; ops[4].onclick = () => addChar('+');
+            btnToggle.classList.remove('active');
+            op1.innerHTML = '%'; op1.onclick = () => insertAtCursor(' % ');
+            op2.innerHTML = '÷'; op2.onclick = () => insertAtCursor('/');
+            op3.innerHTML = '×'; op3.onclick = () => insertAtCursor('*');
+            op4.innerHTML = '-'; op4.onclick = () => insertAtCursor('-');
+            op5.innerHTML = '+'; op5.onclick = () => insertAtCursor('+');
+        }
+        input.focus();
+    }
+
+    // Smart parentes
+    function insertSmartParenthesis() {
+        const textBeforeCursor = input.value.substring(0, input.selectionStart);
+        const openCount = (textBeforeCursor.match(/\(/g) || []).length;
+        const closeCount = (textBeforeCursor.match(/\)/g) || []).length;
+        const lastChar = textBeforeCursor.trim().slice(-1);
+        const isDigitOrCloseParen = /[\d\)]/.test(lastChar);
+        
+        if (openCount > closeCount && isDigitOrCloseParen) {
+            insertAtCursor(')');
+        } else {
+            insertAtCursor('(');
         }
     }
 
-    function prepareExpression(str) {
-        return str.replace(/×/g, '*').replace(/÷/g, '/').replace(/π/g, Math.PI)
-                  .replace(/sin\(/g, 'Math.sin(').replace(/cos\(/g, 'Math.cos(').replace(/√\(/g, 'Math.sqrt(')
-                  .replace(/(\d+) % (\d+)/g, "($1*($2/100))");
+    function insertAtCursor(val) {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const text = input.value;
+        input.value = text.substring(0, start) + val + text.substring(end);
+        input.selectionStart = input.selectionEnd = start + val.length;
+        input.focus();
+        livePreview();
+    }
+
+    function deleteAtCursor() {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        if (start === end && start > 0) {
+            input.value = input.value.substring(0, start - 1) + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start - 1;
+        } else {
+            input.value = input.value.substring(0, start) + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start;
+        }
+        input.focus();
+        livePreview();
+    }
+
+    function clearDisplay() { input.value = ''; preview.innerText = ''; input.focus(); }
+
+    function prepareEval(str) {
+        let processed = str.replace(/(\d+(\.\d+)?) % (\d+(\.\d+)?)/g, '($1*($3/100))');
+        return processed.replace(/×/g, '*').replace(/÷/g, '/');
     }
 
     function livePreview() {
+        let mathStr = prepareEval(input.value);
         try {
-            if (!display.value) { preview.innerText = ''; return; }
-            let res = eval(prepareExpression(display.value));
-            preview.innerText = "= " + Number(res.toFixed(8));
-        } catch { preview.innerText = ''; }
+            if(!mathStr.trim()) { preview.innerText = ''; return; }
+            let res = eval(mathStr);
+            if (res !== undefined && !isNaN(res)) preview.innerText = '= ' + parseFloat(res.toFixed(8));
+        } catch(e) { preview.innerText = ''; }
     }
 
     function calculate() {
+        let mathStr = prepareEval(input.value);
         try {
-            let eq = display.value;
-            if(!eq) return;
-            let res = eval(prepareExpression(eq));
-            let formattedRes = Number(res.toFixed(8));
-            
-            // Uppdatera listan
-            historyData.unshift({ eq, res: formattedRes });
-            if (historyData.length > 20) historyData.pop();
-            
-            // SPARA TILL MINNET (Viktigt!)
-            localStorage.setItem('procalc_storage', JSON.stringify(historyData));
-
-            display.value = formattedRes;
-            preview.innerText = '';
-        } catch {
-            display.value = 'Fel';
-        }
+            if(!input.value) return; // Gör inget om displayen är tom
+            let res = eval(mathStr);
+            if (res !== undefined) {
+                let formatted = parseFloat(res.toFixed(8)).toString();
+                saveToHistory(input.value, formatted);
+                input.value = formatted;
+                preview.innerText = '';
+            }
+        } catch(e) { preview.innerText = 'Fel'; }
+        input.focus();
     }
 
-    function renderHistory() {
-        const container = document.getElementById('history-container');
-        container.innerHTML = '';
-        if (historyData.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:var(--text-muted)">Ingen historik sparad</p>';
+    // --- SPARA TILL MINNET ---
+    function saveToHistory(eq, res) {
+        historyData.unshift({ eq, res });
+        if (historyData.length > 30) historyData.pop(); // Max 30 objekt sparas
+        localStorage.setItem('procalc_history_data', JSON.stringify(historyData));
+        renderHistoryUI();
+    }
+
+    // --- RITA UT HISTORIKEN ---
+    function renderHistoryUI() {
+        const list = document.getElementById('historyList');
+        list.innerHTML = '';
+        if(historyData.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:50px;">Ingen historik sparad</p>';
             return;
         }
-        historyData.forEach((item) => {
-            const div = document.createElement('div');
-            div.className = 'history-item';
-            div.innerHTML = `<div class="hist-eq">${item.eq}</div><div class="hist-res">${item.res}</div>`;
-            div.onclick = () => { display.value = item.res; showPanel('keys'); livePreview(); };
-            container.appendChild(div);
+        historyData.forEach(item => {
+            let div = document.createElement('div');
+            div.style = "text-align:right; padding:15px; border-bottom:1px solid #334155; background:#1e293b; margin-bottom:5px; border-radius:8px;";
+            div.innerHTML = `<div style="color:#94a3b8; cursor:pointer;" onclick="addHist('${item.eq}')">${item.eq}</div>
+                             <div style="color:#10b981; font-size:1.5rem; font-weight:bold; cursor:pointer;" onclick="addHist('${item.res}')">${item.res}</div>`;
+            list.appendChild(div);
         });
     }
 
-    function clearHistory() {
-        if(confirm("Vill du rensa all historik permanent?")) {
+    // --- RENSA ALL HISTORIK ---
+    function clearAllHistory() {
+        if(confirm("Vill du verkligen radera all sparad historik?")) {
             historyData = [];
-            localStorage.removeItem('procalc_storage');
-            renderHistory();
+            localStorage.removeItem('procalc_history_data');
+            renderHistoryUI();
         }
     }
 
-    // Rita ut historiken direkt vid start
-    renderHistory();
+    function addHist(val) { insertAtCursor(val); togglePanel('histPanel'); }
+
+    function togglePanel(id) {
+        const p = document.getElementById(id);
+        const isOpen = p.style.display === 'flex';
+        document.querySelectorAll('.panel').forEach(el => el.style.display = 'none');
+        p.style.display = isOpen ? 'none' : 'flex';
+    }
+
+    // --- KONVERTERARE ---
+    const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
+    const unitRates = { "km/h":1, "mph":0.621371, "m/s":0.277778, "cm":1, "tum":0.393701, "meter":0.01 };
+    let lastConvResult = "";
+
+    function toggleConverter() {
+        const keys = document.getElementById('mainKeys');
+        const conv = document.getElementById('convArea');
+        if(conv.style.display === 'flex') { conv.style.display = 'none'; keys.style.display = 'grid'; }
+        else { keys.style.display = 'none'; conv.style.display = 'flex'; initConv(); }
+    }
+
+    function initConv() {
+        const fromSel = document.getElementById('convFrom');
+        if(fromSel.options.length === 0) {
+            for(let u in unitCat) fromSel.add(new Option(u, u));
+            updateConvTo();
+        }
+    }
+
+    function updateConvTo() {
+        const fromVal = document.getElementById('convFrom').value;
+        const targetCat = unitCat[fromVal];
+        const toSel = document.getElementById('convTo');
+        toSel.innerHTML = ""; 
+        for(let u in unitCat) { if(unitCat[u] === targetCat && u !== fromVal) toSel.add(new Option(u, u)); }
+        runConv();
+    }
+
+    function grabFromDisplay() {
+        let mathStr = prepareEval(input.value);
+        try {
+            let res = eval(mathStr);
+            if(!isNaN(res)) { document.getElementById('convInput').value = res; input.value = ''; runConv(); }
+        } catch(e) {}
+    }
+
+    function runConv() {
+        const v = parseFloat(document.getElementById('convInput').value);
+        const from = document.getElementById('convFrom').value;
+        const to = document.getElementById('convTo').value;
+        if(isNaN(v)) { document.getElementById('convResBtn').innerText = "Resultat: 0"; return; }
+        let res = 0;
+        if(unitCat[from] === "Cirkel") {
+            let r = from==='Radie'?v : from==='Diameter'?v/2 : from==='Omkrets'?v/(2*Math.PI) : Math.sqrt(v/Math.PI);
+            res = to==='Radie'?r : to==='Diameter'?r*2 : to==='Omkrets'?2*Math.PI*r : Math.PI*r*r;
+        } else { res = (v / unitRates[from]) * unitRates[to]; }
+        lastConvResult = parseFloat(res.toFixed(5)).toString();
+        document.getElementById('convResBtn').innerText = "Resultat: " + lastConvResult;
+    }
+
+    function pasteConv() { if(lastConvResult) { insertAtCursor(lastConvResult); toggleConverter(); } }
+    function pasteAndOp(op) { if(lastConvResult) { insertAtCursor(lastConvResult); insertAtCursor(op); toggleConverter(); } }
+    function pasteAndCalc() { if(lastConvResult) { insertAtCursor(lastConvResult); calculate(); toggleConverter(); } }
+
+    // Starta upp
+    loadHistory();
+    input.focus();
 </script>
+</body>
+</html>
