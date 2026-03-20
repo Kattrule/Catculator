@@ -3,7 +3,7 @@
   "name": "Catculator",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/5351/5351480.png",
+      "src": "ikon.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
