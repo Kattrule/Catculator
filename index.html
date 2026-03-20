@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Catculator</title>
+    <link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; background: #0f172a; color: white; overflow: hidden; }
+        .calculator { display: flex; flex-direction: column; height: 100%; width: 100%; }
+        
+        .top-bar { display: flex; gap: 5px; padding: 10px; background: #1e293b; border-bottom: 1px solid #334155; }
+        .top-btn { background: #334155; border: 1px solid #475569; color: #38bdf8; padding: 10px 5px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; border: none; }
+        /* Markerad knapp när Avancerat är aktivt */
+        .top-btn.active { background: #38bdf8; color: #0f172a; }
+
+        .display-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; background: #0f172a; }
+        
+        .display-main { 
+            width: 100%; 
+            background: transparent; 
+            border: none; 
+            color: white; 
+            font-size: 3rem; 
+            text-align: right; 
+            outline: none; 
+            caret-color: #38bdf8;
+            padding: 0;
+        }
+        .display-main::selection { background: rgba(56, 189, 248, 0.3); }
+
+        .result-preview { text-align: right; color: #94a3b8; font-size: 1.4rem; min-height: 1.6rem; margin-top: 5px; }
+
+        .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: #0f172a; flex: 2.5; }
+        button { border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; box-shadow: 0 4px 0 #000; color: white; }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 0 #000; }
+        
+        .num-btn { background: #475569; } 
+        .operator { color: #38bdf8; background: #1e293b; }
+        .clear-btn { color: #ef4444; background: #1e293b; }
+        .equal-btn { background: #10b981; color: #0f172a; font-weight: bold; }
+
+        .conv-area { display: none; flex-direction: column; gap: 15px; padding: 15px; background: #0f172a; flex: 2.5; }
+        .conv-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+        .conv-input, .conv-select { flex: 1; padding: 15px; font-size: 1.2rem; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; box-sizing: border-box; outline: none; }
+        .conv-res-btn { background: #10b981; color: #0f172a; padding: 20px; text-align: center; border-radius: 10px; font-size: 1.4rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #047857; margin-top: auto; }
+        .conv-op-btn { background: #1e293b; color: #38bdf8; border: 1px solid #334155; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: 0.1s; box-shadow: 0 3px 0 #000; }
+        .fetch-btn { background: #38bdf8; color: #0f172a; font-size: 1rem; padding: 15px; flex: 0.8; border: none; border-radius: 8px; font-weight: bold; }
+
+        .panel { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 10; flex-direction: column; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #1e293b; }
+    </style>
+</head>
+<body>
+
+<div class="calculator">
+    <div class="top-bar">
+        <button id="advToggleBtn" class="top-btn" onclick="toggleAdvanced()">Avancerat</button>
+        <button class="top-btn" onclick="toggleConverter()">Konvertera</button>
+        <button class="top-btn" onclick="togglePanel('histPanel')">Historik</button>
+    </div>
+
+    <div class="display-container">
+        <input type="text" id="mainDisplay" class="display-main" placeholder="0" inputmode="none" autofocus>
+        <div class="result-preview" id="preview"></div>
+    </div>
+
+    <div class="keys" id="mainKeys">
+        <button class="clear-btn" onclick="clearDisplay()">C</button>
+        <button id="op-1" class="operator" onclick="insertAtCursor(' % ')">%</button>
+        <button class="operator" onclick="insertSmartParenthesis()">( )</button>
+        <button id="op-2" class="operator" onclick="insertAtCursor('/')">÷</button>
+        
+        <button class="num-btn" onclick="insertAtCursor('7')">7</button>
+        <button class="num-btn" onclick="insertAtCursor('8')">8</button>
+        <button class="num-btn" onclick="insertAtCursor('9')">9</button>
+        <button id="op-3" class="operator" onclick="insertAtCursor('*')">×</button>
+        
+        <button class="num-btn" onclick="insertAtCursor('4')">4</button>
+        <button class="num-btn" onclick="insertAtCursor('5')">5</button>
+        <button class="num-btn" onclick="insertAtCursor('6')">6</button>
+        <button id="op-4" class="operator" onclick="insertAtCursor('-')">-</button>
+        
+        <button class="num-btn" onclick="insertAtCursor('1')">1</button>
+        <button class="num-btn" onclick="insertAtCursor('2')">2</button>
+        <button class="num-btn" onclick="insertAtCursor('3')">3</button>
+        <button id="op-5" class="operator" onclick="insertAtCursor('+')">+</button>
+        
+        <button class="num-btn" onclick="insertAtCursor('.')">.</button>
+        <button class="num-btn" onclick="insertAtCursor('0')">0</button>
+        <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
+        <button class="equal-btn" onclick="calculate()">=</button>
+    </div>
+
+    <div class="conv-area" id="convArea">
+        <div class="conv-row">
+            <select id="convFrom" class="conv-select" onchange="updateConvTo()"></select>
+            <span style="color:#94a3b8; font-size:1.5rem;">➔</span>
+            <select id="convTo" class="conv-select" onchange="runConv()"></select>
+        </div>
+        <div class="conv-row">
+            <input type="number" id="convInput" class="conv-input" placeholder="Värde..." oninput="runConv()">
+            <button class="fetch-btn" onclick="grabFromDisplay()">Hämta</button>
+        </div>
+        <div id="convResBtn" class="conv-res-btn" onclick="pasteConv()">Resultat: 0</div>
+        <div style="display: flex; gap: 8px; margin-top: 10px; height: 50px;">
+            <button class="top-btn clear-btn" style="flex: 1.5;" onclick="toggleConverter()">Stäng</button>
+            <button class="conv-op-btn" style="flex: 1;" onclick="pasteAndOp('+')">+</button>
+            <button class="conv-op-btn" style="flex: 1;" onclick="pasteAndOp('-')">-</button>
+            <button class="conv-op-btn" style="flex: 1;" onclick="pasteAndOp('×')">×</button>
+            <button class="conv-op-btn" style="flex: 1;" onclick="pasteAndOp('÷')">÷</button>
+            <button class="conv-op-btn equal-btn" style="flex: 1; border:none;" onclick="pasteAndCalc()">=</button>
+        </div>
+    </div>
+</div>
+
+<div class="panel" id="histPanel">
+    <div class="panel-header"><h2>Historik</h2><button class="top-btn" style="flex:0.3" onclick="togglePanel('histPanel')">Stäng</button></div>
+    <div id="historyList" style="flex:1; overflow-y:auto; padding:15px;"></div>
+</div>
+
+<script>
+    const input = document.getElementById('mainDisplay');
+    const preview = document.getElementById('preview');
+    let historyData = [];
+    let isAdvanced = false;
+
+    // NY FUNKTION: Byt ut operatörerna mot avancerade funktioner
+    function toggleAdvanced() {
+        isAdvanced = !isAdvanced;
+        const btnToggle = document.getElementById('advToggleBtn');
+        const op1 = document.getElementById('op-1'); // %
+        const op2 = document.getElementById('op-2'); // ÷
+        const op3 = document.getElementById('op-3'); // ×
+        const op4 = document.getElementById('op-4'); // -
+        const op5 = document.getElementById('op-5'); // +
+
+        if (isAdvanced) {
+            btnToggle.classList.add('active');
+            op1.innerHTML = 'sin'; op1.onclick = () => insertAtCursor('Math.sin(');
+            op2.innerHTML = 'cos'; op2.onclick = () => insertAtCursor('Math.cos(');
+            op3.innerHTML = '√';   op3.onclick = () => insertAtCursor('Math.sqrt(');
+            op4.innerHTML = 'xʸ';  op4.onclick = () => insertAtCursor('**');
+            op5.innerHTML = 'π';   op5.onclick = () => insertAtCursor('Math.PI');
+        } else {
+            btnToggle.classList.remove('active');
+            op1.innerHTML = '%'; op1.onclick = () => insertAtCursor(' % ');
+            op2.innerHTML = '÷'; op2.onclick = () => insertAtCursor('/');
+            op3.innerHTML = '×'; op3.onclick = () => insertAtCursor('*');
+            op4.innerHTML = '-'; op4.onclick = () => insertAtCursor('-');
+            op5.innerHTML = '+'; op5.onclick = () => insertAtCursor('+');
+        }
+        input.focus();
+    }
+
+    // NY FUNKTION: Smart parentes
+    function insertSmartParenthesis() {
+        const textBeforeCursor = input.value.substring(0, input.selectionStart);
+        
+        // Räkna hur många öppna respektive stängda parenteser som finns före markören
+        const openCount = (textBeforeCursor.match(/\(/g) || []).length;
+        const closeCount = (textBeforeCursor.match(/\)/g) || []).length;
+        
+        // Kolla vad sista tecknet innan markören är
+        const lastChar = textBeforeCursor.trim().slice(-1);
+        const isDigitOrCloseParen = /[\d\)]/.test(lastChar);
+        
+        // Om vi har fler öppna än stängda OCH sista tecknet är en siffra eller ')', stäng parentesen
+        if (openCount > closeCount && isDigitOrCloseParen) {
+            insertAtCursor(')');
+        } else {
+            insertAtCursor('(');
+        }
+    }
+
+    // Sätter in text där markören står
+    function insertAtCursor(val) {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const text = input.value;
+        input.value = text.substring(0, start) + val + text.substring(end);
+        input.selectionStart = input.selectionEnd = start + val.length;
+        input.focus();
+        livePreview();
+    }
+
+    function deleteAtCursor() {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        if (start === end && start > 0) {
+            input.value = input.value.substring(0, start - 1) + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start - 1;
+        } else {
+            input.value = input.value.substring(0, start) + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start;
+        }
+        input.focus();
+        livePreview();
+    }
+
+    function clearDisplay() { input.value = ''; preview.innerText = ''; input.focus(); }
+
+    function prepareEval(str) {
+        let processed = str.replace(/(\d+(\.\d+)?) % (\d+(\.\d+)?)/g, '($1*($3/100))');
+        return processed.replace(/×/g, '*').replace(/÷/g, '/').replace(/×/g, '*');
+    }
+
+    function livePreview() {
+        let mathStr = prepareEval(input.value);
+        try {
+            if(!mathStr.trim()) { preview.innerText = ''; return; }
+            let res = eval(mathStr);
+            if (res !== undefined && !isNaN(res)) preview.innerText = '= ' + parseFloat(res.toFixed(8));
+        } catch(e) { preview.innerText = ''; }
+    }
+
+    function calculate() {
+        let mathStr = prepareEval(input.value);
+        try {
+            let res = eval(mathStr);
+            if (res !== undefined) {
+                let formatted = parseFloat(res.toFixed(8)).toString();
+                saveToHistory(input.value, formatted);
+                input.value = formatted;
+                preview.innerText = '';
+            }
+        } catch(e) { preview.innerText = 'Fel'; }
+        input.focus();
+    }
+
+    function saveToHistory(eq, res) {
+        historyData.unshift({ eq, res });
+        const list = document.getElementById('historyList');
+        list.innerHTML = '';
+        historyData.forEach(item => {
+            let div = document.createElement('div');
+            div.style = "text-align:right; padding:15px; border-bottom:1px solid #334155; background:#1e293b; margin-bottom:5px; border-radius:8px;";
+            div.innerHTML = `<div style="color:#94a3b8; cursor:pointer;" onclick="addHist('${item.eq}')">${item.eq}</div>
+                             <div style="color:#10b981; font-size:1.5rem; font-weight:bold; cursor:pointer;" onclick="addHist('${item.res}')">${item.res}</div>`;
+            list.appendChild(div);
+        });
+    }
+
+    function addHist(val) { insertAtCursor(val); togglePanel('histPanel'); }
+
+    function togglePanel(id) {
+        const p = document.getElementById(id);
+        const isOpen = p.style.display === 'flex';
+        document.querySelectorAll('.panel').forEach(el => el.style.display = 'none');
+        p.style.display = isOpen ? 'none' : 'flex';
+    }
+
+    // --- KONVERTERARE ---
+    const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
+    const unitRates = { "km/h":1, "mph":0.621371, "m/s":0.277778, "cm":1, "tum":0.393701, "meter":0.01 };
+    let lastConvResult = "";
+
+    function toggleConverter() {
+        const keys = document.getElementById('mainKeys');
+        const conv = document.getElementById('convArea');
+        if(conv.style.display === 'flex') { conv.style.display = 'none'; keys.style.display = 'grid'; }
+        else { keys.style.display = 'none'; conv.style.display = 'flex'; initConv(); }
+    }
+
+    function initConv() {
+        const fromSel = document.getElementById('convFrom');
+        if(fromSel.options.length === 0) {
+            for(let u in unitCat) fromSel.add(new Option(u, u));
+            updateConvTo();
+        }
+    }
+
+    function updateConvTo() {
+        const fromVal = document.getElementById('convFrom').value;
+        const targetCat = unitCat[fromVal];
+        const toSel = document.getElementById('convTo');
+        toSel.innerHTML = ""; 
+        for(let u in unitCat) { if(unitCat[u] === targetCat && u !== fromVal) toSel.add(new Option(u, u)); }
+        runConv();
+    }
+
+    function grabFromDisplay() {
+        let mathStr = prepareEval(input.value);
+        try {
+            let res = eval(mathStr);
+            if(!isNaN(res)) { document.getElementById('convInput').value = res; input.value = ''; runConv(); }
+        } catch(e) {}
+    }
+
+    function runConv() {
+        const v = parseFloat(document.getElementById('convInput').value);
+        const from = document.getElementById('convFrom').value;
+        const to = document.getElementById('convTo').value;
+        if(isNaN(v)) { document.getElementById('convResBtn').innerText = "Resultat: 0"; return; }
+        let res = 0;
+        if(unitCat[from] === "Cirkel") {
+            let r = from==='Radie'?v : from==='Diameter'?v/2 : from==='Omkrets'?v/(2*Math.PI) : Math.sqrt(v/Math.PI);
+            res = to==='Radie'?r : to==='Diameter'?r*2 : to==='Omkrets'?2*Math.PI*r : Math.PI*r*r;
+        } else { res = (v / unitRates[from]) * unitRates[to]; }
+        lastConvResult = parseFloat(res.toFixed(5)).toString();
+        document.getElementById('convResBtn').innerText = "Resultat: " + lastConvResult;
+    }
+
+    function pasteConv() { if(lastConvResult) { insertAtCursor(lastConvResult); toggleConverter(); } }
+    function pasteAndOp(op) { if(lastConvResult) { insertAtCursor(lastConvResult); insertAtCursor(op); toggleConverter(); } }
+    function pasteAndCalc() { if(lastConvResult) { insertAtCursor(lastConvResult); calculate(); toggleConverter(); } }
+
+    // Startfokus
+    input.focus();
+</script>
+</body>
+</html>
