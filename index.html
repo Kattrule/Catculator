@@ -107,121 +107,139 @@
     </div>
 
     <script>
-        let historyData = JSON.parse(localStorage.getItem('procalc_history')) || [];
-        let isAdvanced = false;
-        const display = document.getElementById('input-display');
-        const preview = document.getElementById('preview');
-
-        // PWA Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+    // 1. Försök ladda historik direkt när sidan läses in
+    let historyData = [];
+    try {
+        const saved = localStorage.getItem('procalc_storage');
+        if (saved) {
+            historyData = JSON.parse(saved);
+            console.log("Historik laddad:", historyData);
         }
+    } catch (e) {
+        console.error("Kunde inte ladda historik", e);
+        historyData = [];
+    }
 
-        function showPanel(name) {
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            document.getElementById(name + '-panel').classList.add('active');
-            if(name === 'history') renderHistory();
+    let isAdvanced = false;
+    const display = document.getElementById('input-display');
+    const preview = document.getElementById('preview');
+
+    // PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
+
+    function showPanel(name) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(name + '-panel').classList.add('active');
+        if(name === 'history') renderHistory();
+    }
+
+    function addChar(char) {
+        display.value += char;
+        livePreview();
+    }
+
+    function clearDisplay() {
+        display.value = '';
+        preview.innerText = '';
+    }
+
+    function backspace() {
+        display.value = display.value.slice(0, -1);
+        livePreview();
+    }
+
+    function smartParenthesis() {
+        const val = display.value;
+        const openCount = (val.match(/\(/g) || []).length;
+        const closeCount = (val.match(/\)/g) || []).length;
+        const lastChar = val.slice(-1);
+        if (openCount > closeCount && (/[0-9)]/.test(lastChar))) {
+            addChar(')');
+        } else {
+            addChar('(');
         }
+    }
 
-        function addChar(char) {
-            display.value += char;
-            livePreview();
+    function toggleAdvanced(btn) {
+        isAdvanced = !isAdvanced;
+        btn.classList.toggle('active');
+        const ops = document.querySelectorAll('.mode-swap');
+        if (isAdvanced) {
+            ops[0].innerText = 'sin'; ops[0].onclick = () => addChar('sin(');
+            ops[1].innerText = 'cos'; ops[1].onclick = () => addChar('cos(');
+            ops[2].innerText = '√'; ops[2].onclick = () => addChar('√(');
+            ops[3].innerText = 'π'; ops[3].onclick = () => addChar('π');
+            ops[4].innerText = '^'; ops[4].onclick = () => addChar('**');
+        } else {
+            ops[0].innerText = '%'; ops[0].onclick = () => addChar(' % ');
+            ops[1].innerText = '÷'; ops[1].onclick = () => addChar('÷');
+            ops[2].innerText = '×'; ops[2].onclick = () => addChar('×');
+            ops[3].innerText = '-'; ops[3].onclick = () => addChar('-');
+            ops[4].innerText = '+'; ops[4].onclick = () => addChar('+');
         }
+    }
 
-        function clearDisplay() {
-            display.value = '';
+    function prepareExpression(str) {
+        return str.replace(/×/g, '*').replace(/÷/g, '/').replace(/π/g, Math.PI)
+                  .replace(/sin\(/g, 'Math.sin(').replace(/cos\(/g, 'Math.cos(').replace(/√\(/g, 'Math.sqrt(')
+                  .replace(/(\d+) % (\d+)/g, "($1*($2/100))");
+    }
+
+    function livePreview() {
+        try {
+            if (!display.value) { preview.innerText = ''; return; }
+            let res = eval(prepareExpression(display.value));
+            preview.innerText = "= " + Number(res.toFixed(8));
+        } catch { preview.innerText = ''; }
+    }
+
+    function calculate() {
+        try {
+            let eq = display.value;
+            if(!eq) return;
+            let res = eval(prepareExpression(eq));
+            let formattedRes = Number(res.toFixed(8));
+            
+            // Uppdatera listan
+            historyData.unshift({ eq, res: formattedRes });
+            if (historyData.length > 20) historyData.pop();
+            
+            // SPARA TILL MINNET (Viktigt!)
+            localStorage.setItem('procalc_storage', JSON.stringify(historyData));
+
+            display.value = formattedRes;
             preview.innerText = '';
+        } catch {
+            display.value = 'Fel';
         }
+    }
 
-        function backspace() {
-            display.value = display.value.slice(0, -1);
-            livePreview();
+    function renderHistory() {
+        const container = document.getElementById('history-container');
+        container.innerHTML = '';
+        if (historyData.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:var(--text-muted)">Ingen historik sparad</p>';
+            return;
         }
+        historyData.forEach((item) => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `<div class="hist-eq">${item.eq}</div><div class="hist-res">${item.res}</div>`;
+            div.onclick = () => { display.value = item.res; showPanel('keys'); livePreview(); };
+            container.appendChild(div);
+        });
+    }
 
-        function smartParenthesis() {
-            const val = display.value;
-            const openCount = (val.match(/\(/g) || []).length;
-            const closeCount = (val.match(/\)/g) || []).length;
-            const lastChar = val.slice(-1);
-
-            if (openCount > closeCount && (/[0-9)]/.test(lastChar))) {
-                addChar(')');
-            } else {
-                addChar('(');
-            }
-        }
-
-        function toggleAdvanced(btn) {
-            isAdvanced = !isAdvanced;
-            btn.classList.toggle('active');
-            const ops = document.querySelectorAll('.mode-swap');
-            if (isAdvanced) {
-                ops[0].innerText = 'sin'; ops[0].onclick = () => addChar('sin(');
-                ops[1].innerText = 'cos'; ops[1].onclick = () => addChar('cos(');
-                ops[2].innerText = '√'; ops[2].onclick = () => addChar('√(');
-                ops[3].innerText = 'π'; ops[3].onclick = () => addChar('π');
-                ops[4].innerText = '^'; ops[4].onclick = () => addChar('**');
-            } else {
-                ops[0].innerText = '%'; ops[0].onclick = () => addChar(' % ');
-                ops[1].innerText = '÷'; ops[1].onclick = () => addChar('÷');
-                ops[2].innerText = '×'; ops[2].onclick = () => addChar('×');
-                ops[3].innerText = '-'; ops[3].onclick = () => addChar('-');
-                ops[4].innerText = '+'; ops[4].onclick = () => addChar('+');
-            }
-        }
-
-        function prepareExpression(str) {
-            return str.replace(/×/g, '*').replace(/÷/g, '/').replace(/π/g, Math.PI)
-                      .replace(/sin\(/g, 'Math.sin(').replace(/cos\(/g, 'Math.cos(').replace(/√\(/g, 'Math.sqrt(')
-                      .replace(/(\d+) % (\d+)/g, "($1*($2/100))");
-        }
-
-        function livePreview() {
-            try {
-                if (!display.value) { preview.innerText = ''; return; }
-                let res = eval(prepareExpression(display.value));
-                preview.innerText = "= " + Number(res.toFixed(8));
-            } catch { preview.innerText = ''; }
-        }
-
-        function calculate() {
-            try {
-                let eq = display.value;
-                let res = eval(prepareExpression(eq));
-                let formattedRes = Number(res.toFixed(8));
-                
-                // Spara i historik
-                historyData.unshift({ eq, res: formattedRes });
-                if (historyData.length > 20) historyData.pop();
-                localStorage.setItem('procalc_history', JSON.stringify(historyData));
-
-                display.value = formattedRes;
-                preview.innerText = '';
-            } catch {
-                display.value = 'Fel';
-            }
-        }
-
-        function renderHistory() {
-            const container = document.getElementById('history-container');
-            container.innerHTML = historyData.length === 0 ? '<p style="text-align:center; color:var(--text-muted)">Ingen historik</p>' : '';
-            historyData.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = 'history-item';
-                div.innerHTML = `<div class="hist-eq">${item.eq}</div><div class="hist-res">${item.res}</div>`;
-                div.onclick = () => { display.value += item.res; showPanel('keys'); };
-                container.appendChild(div);
-            });
-        }
-
-        function clearHistory() {
+    function clearHistory() {
+        if(confirm("Vill du rensa all historik permanent?")) {
             historyData = [];
-            localStorage.removeItem('procalc_history');
+            localStorage.removeItem('procalc_storage');
             renderHistory();
         }
+    }
 
-        // Kör vid start
-        renderHistory();
-    </script>
-</body>
-</html>
+    // Rita ut historiken direkt vid start
+    renderHistory();
+</script>
