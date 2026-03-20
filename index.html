@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Universal Pro Calc</title>
+    <title>Catculator</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; background: #0f172a; color: white; overflow: hidden; }
         .calculator { display: flex; flex-direction: column; height: 100%; width: 100%; }
         
         .top-bar { display: flex; gap: 5px; padding: 10px; background: #1e293b; border-bottom: 1px solid #334155; }
         .top-btn { background: #334155; border: 1px solid #475569; color: #38bdf8; padding: 10px 5px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; border: none; }
-        /* Markerad knapp när Avancerat är aktivt */
         .top-btn.active { background: #38bdf8; color: #0f172a; }
 
         .display-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; background: #0f172a; }
@@ -125,6 +130,11 @@
 </div>
 
 <script>
+    // --- LÄGG TILL SERVICE WORKER IGEN ---
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Registration failed', err));
+    }
+
     const input = document.getElementById('mainDisplay');
     const preview = document.getElementById('preview');
     let historyData = [];
