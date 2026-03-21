@@ -21,7 +21,7 @@
             --equal-bg: #10b981;
         }
 
-        /* Tvinga all text att ärva färgen från variabeln */
+        /* Tvinga all text att använda variabeln */
         * { color: var(--text-color); font-family: Arial, sans-serif; box-sizing: border-box; }
 
         body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-color); overflow: hidden; transition: background 0.3s; }
@@ -44,7 +44,7 @@
         /* KEYS */
         .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: var(--bg-color); flex: 2.5; }
         button { border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
-        button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); filter: brightness(1.2); }
         
         .num-btn { background: var(--btn-num); } 
         .operator { color: var(--accent) !important; background: var(--btn-op); }
@@ -128,7 +128,7 @@
             <button class="conv-op-btn" onclick="pasteAndOp('/')">÷</button>
             <button class="conv-op-btn equal-btn" style="border:none;" onclick="pasteAndCalc()">=</button>
         </div>
-        <button class="top-btn" onclick="toggleConverter()" style="margin-top:15px; padding:15px; color:var(--accent) !important;">Stäng</button>
+        <button class="top-btn" onclick="toggleConverter()" style="margin-top:15px; padding:15px; background:rgba(255,255,255,0.05);">Stäng</button>
     </div>
 </div>
 
@@ -156,7 +156,7 @@
             <option value="--text-color">All Text</option>
             <option value="--btn-num">Sifferknappar</option>
             <option value="--btn-op">Operatörknappar</option>
-            <option value="--accent">Accentfärg (Symboler)</option>
+            <option value="--accent">Accentfärg</option>
             <option value="--equal-bg">Lika med (=)</option>
         </select>
     </div>
@@ -170,6 +170,7 @@
 </div>
 
 <script>
+    // Globala variabler för display-elementen
     const input = document.getElementById('mainDisplay');
     const preview = document.getElementById('preview');
     let historyData = [];
@@ -196,8 +197,10 @@
     function loadDesign() {
         const saved = localStorage.getItem('catcalc_design');
         if(saved) {
-            const d = JSON.parse(saved);
-            for(let k in d) document.documentElement.style.setProperty(k, d[k]);
+            try {
+                const d = JSON.parse(saved);
+                for(let k in d) document.documentElement.style.setProperty(k, d[k]);
+            } catch(e) { console.error("Kunde inte ladda design"); }
         }
     }
 
@@ -210,23 +213,30 @@
 
     // --- CALCULATOR LOGIK ---
     function insertAtCursor(val) {
-        const start = input.selectionStart, end = input.selectionEnd;
-        input.value = input.value.substring(0, start) + val + input.value.substring(end);
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        const text = input.value;
+        input.value = text.substring(0, start) + val + text.substring(end);
         input.selectionStart = input.selectionEnd = start + val.length;
         input.focus();
         livePreview();
     }
 
     function deleteAtCursor() {
-        const start = input.selectionStart;
-        if(start > 0) {
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        if(start === end && start > 0) {
             input.value = input.value.substring(0, start-1) + input.value.substring(start);
             input.selectionStart = input.selectionEnd = start-1;
+        } else {
+            input.value = input.value.substring(0, start) + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start;
         }
+        input.focus();
         livePreview();
     }
 
-    function clearDisplay() { input.value = ''; preview.innerText = ''; }
+    function clearDisplay() { input.value = ''; preview.innerText = ''; input.focus(); }
 
     function insertSmartParenthesis() {
         const before = input.value.substring(0, input.selectionStart);
@@ -254,6 +264,7 @@
             input.value = formatted;
             preview.innerText = '';
         } catch(e) { preview.innerText = 'Fel'; }
+        input.focus();
     }
 
     // --- KONVERTERARE LOGIK ---
@@ -300,7 +311,8 @@
 
     function grabFromDisplay() {
         try {
-            let res = eval(input.value.replace(/×/g, '*').replace(/÷/g, '/'));
+            let math = input.value.replace(/×/g, '*').replace(/÷/g, '/');
+            let res = eval(math);
             if(!isNaN(res)) { document.getElementById('convInput').value = res; runConv(); }
         } catch(e) {}
     }
@@ -323,3 +335,41 @@
         if(historyData.length > 30) historyData.pop();
         localStorage.setItem('procalc_history_data', JSON.stringify(historyData));
     }
+
+    function renderHistoryUI() {
+        const list = document.getElementById('historyList');
+        if(!list) return;
+        list.innerHTML = historyData.length ? historyData.map(item => `
+            <div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;">
+                <div style="opacity:0.6; cursor:pointer;" onclick="insertAtCursor('${item.eq}')">${item.eq}</div>
+                <div style="color:var(--accent) !important; font-size:1.4rem; font-weight:bold; cursor:pointer;" onclick="insertAtCursor('${item.res}')">${item.res}</div>
+            </div>`).join('') : '<p style="text-align:center; opacity:0.5;">Tomt</p>';
+    }
+
+    function clearAllHistory() { historyData = []; localStorage.removeItem('procalc_history_data'); renderHistoryUI(); }
+
+    function toggleAdvanced() {
+        isAdvanced = !isAdvanced;
+        document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
+        const op1 = document.getElementById('op-1'), op2 = document.getElementById('op-2'); 
+        if(isAdvanced) {
+            op1.innerHTML = 'sin'; op1.onclick = () => insertAtCursor('Math.sin(');
+            op2.innerHTML = 'cos'; op2.onclick = () => insertAtCursor('Math.cos(');
+        } else {
+            op1.innerHTML = '%'; op1.onclick = () => insertAtCursor(' % ');
+            op2.innerHTML = '÷'; op2.onclick = () => insertAtCursor('/');
+        }
+    }
+
+    // Starta upp appen
+    window.addEventListener('DOMContentLoaded', () => {
+        loadDesign();
+        const savedHist = localStorage.getItem('procalc_history_data');
+        if(savedHist) {
+            try { historyData = JSON.parse(savedHist); } catch(e) {}
+        }
+        input.focus();
+    });
+</script>
+</body>
+</html>
