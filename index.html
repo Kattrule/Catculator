@@ -151,7 +151,7 @@
     <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
         <p style="color: var(--text-muted); font-size: 0.9rem;">
             Använd <b>?</b> där du vill ha inmatat värde.<br>
-            <i>Exempel: (1821 * ?) / 5000</i>
+            <i>Exempel: (1821 * 0.?) / 5000</i>
         </p>
         <input type="text" id="customName" class="conv-input" placeholder="Namn på formeln">
         <input type="text" id="customMath" class="conv-input" placeholder="Formel med ?">
@@ -213,7 +213,7 @@
         }
     }
 
-    // --- KALKYLATOR LOGIK (MED FIXAD MARKÖR) ---
+    // --- KALKYLATOR LOGIK ---
     function insertAtCursor(val) {
         const start = input.selectionStart || 0;
         input.value = input.value.substring(0, start) + val + input.value.substring(input.selectionEnd || 0);
@@ -299,7 +299,8 @@
         if (from.startsWith("custom_")) {
             const formula = customFormulas[from.replace("custom_", "")];
             try {
-                let mathStr = formula.replace(/\?/g, "(" + v + ")").replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
+                // HÄR ÄR FIXEN: Vi byter ut ? direkt utan extra parenteser
+                let mathStr = formula.replace(/\?/g, v).replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
                 res = eval(mathStr);
                 if(!isFinite(res) || isNaN(res)) throw new Error();
             } catch(e) { document.getElementById('convResBtn').innerText = "Fel i formel!"; return; }
