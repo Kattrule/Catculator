@@ -19,6 +19,7 @@
             --accent: #38bdf8;
             --btn-op: #1e293b;
             --equal-bg: #10b981;
+            --text-muted: #94a3b8;
         }
 
         * { color: var(--text-color); font-family: Arial, sans-serif; box-sizing: border-box; }
@@ -61,6 +62,9 @@
         
         .recent-colors { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
         .color-swatch { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: 0.2s; }
+
+        .custom-item { background: var(--panel-bg); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
+        .del-btn { background: #ef4444; color: white !important; font-size: 1rem; padding: 10px; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -105,10 +109,13 @@
         <div class="conv-row"><select id="convFrom" class="conv-select" onchange="updateConvTo()"></select><span style="font-size:1.5rem;">➔</span><select id="convTo" class="conv-select" onchange="runConv()"></select></div>
         <div class="conv-row"><input type="number" id="convInput" class="conv-input" placeholder="Värde..." oninput="runConv()"><button class="fetch-btn" onclick="grabFromDisplay()">Hämta</button></div>
         <div id="convResBtn" class="conv-res-btn" onclick="pasteConv()">Resultat: 0</div>
+        
         <div style="display: flex; gap: 8px; margin-top: 10px;">
             <button class="conv-op-btn" onclick="pasteAndOp('+')">+</button><button class="conv-op-btn" onclick="pasteAndOp('-')">-</button><button class="conv-op-btn" onclick="pasteAndOp('*')">×</button><button class="conv-op-btn" onclick="pasteAndOp('/')">÷</button><button class="conv-op-btn equal-btn" onclick="pasteAndCalc()">=</button>
         </div>
-        <button class="top-btn" onclick="toggleConverter()" style="margin-top:15px; padding:15px;">Stäng</button>
+
+        <button class="top-btn" onclick="togglePanel('customPanel')" style="margin-top:15px; padding:15px; background: rgba(255,255,255,0.05); color: var(--text-color) !important;">+ Skapa egen formel</button>
+        <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng Konverterare</button>
     </div>
 </div>
 
@@ -119,7 +126,6 @@
 
 <div class="panel" id="designPanel">
     <div class="panel-header"><h2>Designstudio 🎨</h2><button class="top-btn" onclick="togglePanel('designPanel')">Klar</button></div>
-    
     <div class="design-row">
         <span>Välj del & Justera färg:</span>
         <select id="designTarget" class="design-select" onchange="syncDesignUI()">
@@ -131,19 +137,32 @@
             <option value="--accent">Accentfärg</option>
             <option value="--equal-bg">Lika med (=)</option>
         </select>
-        
         <div class="design-ui-group">
             <input type="color" id="designColor" class="color-input" oninput="updateFromPicker(this.value)">
             <input type="text" id="designHex" class="hex-input" maxlength="7" oninput="updateFromHex(this.value)">
         </div>
     </div>
-
     <div class="design-row">
         <span>Senaste färger:</span>
         <div id="recentColors" class="recent-colors"></div>
     </div>
-
     <div style="padding:20px;"><button class="top-btn" style="background:#ef4444; color:white !important; width:100%; padding:15px;" onclick="resetDesign()">Återställ allt</button></div>
+</div>
+
+<div class="panel" id="customPanel">
+    <div class="panel-header"><h2>Egna Formler</h2><button class="top-btn" onclick="togglePanel('customPanel')">Klar</button></div>
+    <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
+        <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.4;">
+            Skapa en egen genväg! Skriv din formel och använd bokstaven <b>x</b> där du vill att ditt inmatade värde ska placeras.<br>
+            <i>Exempel: (1821 * x) / 5000</i>
+        </p>
+        <input type="text" id="customName" class="conv-input" placeholder="Namn (t.ex. Min Uträkning)">
+        <input type="text" id="customMath" class="conv-input" placeholder="Formel med x (t.ex. x * 0.8)">
+        <button class="equal-btn" style="padding: 15px; border-radius: 8px; font-size: 1.2rem;" onclick="saveCustomFormula()">Spara Formel</button>
+        
+        <h3 style="margin-top: 20px; color: var(--accent);">Sparade formler:</h3>
+        <div id="customList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
 </div>
 
 <script>
@@ -151,41 +170,30 @@
     const preview = document.getElementById('preview');
     let historyData = [];
     let recentColors = JSON.parse(localStorage.getItem('catcalc_recent')) || ['#38bdf8', '#10b981', '#ef4444', '#ffffff', '#0f172a', '#1e293b'];
+    
+    // Ladda in sparade egna formler
+    let customFormulas = JSON.parse(localStorage.getItem('catcalc_custom')) || {};
 
     // --- DESIGN LOGIK ---
     const defaultDesign = {"--bg-color":"#0f172a","--panel-bg":"#1e293b","--text-color":"#ffffff","--btn-num":"#475569","--accent":"#38bdf8","--btn-op":"#1e293b","--equal-bg":"#10b981"};
 
     function syncDesignUI() {
         const target = document.getElementById('designTarget').value;
-        // Hämta färgen direkt från elementets stil (beräknat värde)
         let currentColor = getComputedStyle(document.documentElement).getPropertyValue(target).trim();
-        
-        // Konvertera till HEX (viktigt!)
         const hex = anyToHex(currentColor);
-        
         document.getElementById('designColor').value = hex;
         document.getElementById('designHex').value = hex;
         renderRecentColors();
     }
 
-    // Översätter ALLT (namn, rgb, rgba) till en 7-teckens HEX
     function anyToHex(str) {
         const ctx = document.createElement('canvas').getContext('2d');
         ctx.fillStyle = str;
-        return ctx.fillStyle; // Canvas returnerar alltid hex för enkla färger
+        return ctx.fillStyle; 
     }
 
-    function updateFromPicker(val) {
-        applyColor(val);
-        document.getElementById('designHex').value = val;
-    }
-
-    function updateFromHex(val) {
-        if(/^#[0-9A-F]{6}$/i.test(val)) {
-            applyColor(val);
-            document.getElementById('designColor').value = val;
-        }
-    }
+    function updateFromPicker(val) { applyColor(val); document.getElementById('designHex').value = val; }
+    function updateFromHex(val) { if(/^#[0-9A-F]{6}$/i.test(val)) { applyColor(val); document.getElementById('designColor').value = val; } }
 
     function applyColor(color) {
         const target = document.getElementById('designTarget').value;
@@ -227,7 +235,7 @@
         }
     }
 
-    // --- KALKYLATOR LOGIK (Basfunktioner) ---
+    // --- KALKYLATOR LOGIK ---
     function insertAtCursor(val) {
         const start = input.selectionStart || 0;
         input.value = input.value.substring(0, start) + val + input.value.substring(input.selectionEnd || 0);
@@ -270,10 +278,11 @@
         } catch(e) { preview.innerText = 'Fel'; }
     }
 
-    // --- KONVERTERARE ---
+    // --- KONVERTERARE & EGNA FORMLER ---
     const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
     const unitRates = { "km/h":1, "mph":0.621371, "m/s":0.277778, "cm":1, "tum":0.393701, "meter":0.01 };
     let lastConvResult = "";
+    
     function toggleConverter() {
         const keys = document.getElementById('mainKeys'), conv = document.getElementById('convArea');
         const isOpening = conv.style.display !== 'flex';
@@ -281,32 +290,112 @@
         conv.style.display = isOpening ? 'flex' : 'none';
         if(isOpening) initConv();
     }
+
     function initConv() {
         const fromSel = document.getElementById('convFrom');
-        if(fromSel.options.length === 0) {
-            for(let u in unitCat) fromSel.add(new Option(u, u));
-            updateConvTo();
+        fromSel.innerHTML = ""; // Rensa listan och bygg om den
+        
+        // Lägg in standard
+        for(let u in unitCat) fromSel.add(new Option(u, u));
+        
+        // Lägg in egna formler
+        for(let f in customFormulas) {
+            fromSel.add(new Option("⚙️ " + f, "custom_" + f));
         }
+        updateConvTo();
     }
+
     function updateConvTo() {
         const fromVal = document.getElementById('convFrom').value;
-        const targetCat = unitCat[fromVal], toSel = document.getElementById('convTo');
+        const toSel = document.getElementById('convTo');
         toSel.innerHTML = ""; 
-        for(let u in unitCat) if(unitCat[u] === targetCat && u !== fromVal) toSel.add(new Option(u, u));
+
+        if (fromVal.startsWith("custom_")) {
+            // Om det är en egen formel behöver vi inget "Till"-värde
+            toSel.add(new Option("Uträkning", "result"));
+            toSel.disabled = true;
+        } else {
+            toSel.disabled = false;
+            const targetCat = unitCat[fromVal];
+            for(let u in unitCat) if(unitCat[u] === targetCat && u !== fromVal) toSel.add(new Option(u, u));
+        }
         runConv();
     }
+
     function runConv() {
         const v = parseFloat(document.getElementById('convInput').value);
-        const from = document.getElementById('convFrom').value, to = document.getElementById('convTo').value;
+        const from = document.getElementById('convFrom').value;
+        const to = document.getElementById('convTo').value;
+        
         if(isNaN(v)) { document.getElementById('convResBtn').innerText = "Resultat: 0"; return; }
         let res = 0;
-        if(unitCat[from] === "Cirkel") {
+
+        if (from.startsWith("custom_")) {
+            // EGEN FORMEL LOGIK
+            const fName = from.replace("custom_", "");
+            const formula = customFormulas[fName];
+            try {
+                // Byt ut 'x' mot värdet och räkna ut
+                let mathStr = formula.replace(/x/ig, v).replace(/×/g, '*').replace(/÷/g, '/');
+                res = eval(mathStr);
+            } catch(e) {
+                document.getElementById('convResBtn').innerText = "Fel i formel!";
+                return;
+            }
+        } else if(unitCat[from] === "Cirkel") {
             let r = from==='Radie'?v : from==='Diameter'?v/2 : from==='Omkrets'?v/(2*Math.PI) : Math.sqrt(v/Math.PI);
             res = to==='Radie'?r : to==='Diameter'?r*2 : to==='Omkrets'?2*Math.PI*r : Math.PI*r*r;
-        } else { res = (v / unitRates[from]) * unitRates[to]; }
+        } else { 
+            res = (v / unitRates[from]) * unitRates[to]; 
+        }
+
         lastConvResult = parseFloat(res.toFixed(5)).toString();
         document.getElementById('convResBtn').innerText = "Resultat: " + lastConvResult;
     }
+
+    // --- HANTERA EGNA FORMLER UI ---
+    function saveCustomFormula() {
+        const name = document.getElementById('customName').value.trim();
+        const formula = document.getElementById('customMath').value.trim();
+        
+        if(!name || !formula) return alert("Fyll i både namn och formel!");
+        if(!formula.toLowerCase().includes("-")) return alert("Din formel måste innehålla bokstaven 'x' där värdet ska vara!");
+
+        customFormulas[name] = formula;
+        localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas));
+        
+        document.getElementById('customName').value = '';
+        document.getElementById('customMath').value = '';
+        
+        renderCustomList();
+        initConv(); // Uppdatera rullgardinsmenyn i bakgrunden
+    }
+
+    function renderCustomList() {
+        const list = document.getElementById('customList');
+        list.innerHTML = "";
+        for(let fName in customFormulas) {
+            list.innerHTML += `
+                <div class="custom-item">
+                    <div>
+                        <strong style="color:var(--accent);">${fName}</strong><br>
+                        <span style="font-size:0.9rem; color:var(--text-muted);">${customFormulas[fName]}</span>
+                    </div>
+                    <button class="del-btn" onclick="deleteCustomFormula('${fName}')">Ta bort</button>
+                </div>
+            `;
+        }
+    }
+
+    function deleteCustomFormula(fName) {
+        if(confirm(`Vill du ta bort "${fName}"?`)) {
+            delete customFormulas[fName];
+            localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas));
+            renderCustomList();
+            initConv();
+        }
+    }
+
     function grabFromDisplay() {
         try {
             let res = eval(input.value.replace(/×/g, '*').replace(/÷/g, '/'));
@@ -323,18 +412,24 @@
         const isOpen = p.style.display === 'flex';
         document.querySelectorAll('.panel').forEach(el => el.style.display = 'none');
         p.style.display = isOpen ? 'none' : 'flex';
+        
         if(id === 'histPanel') renderHistoryUI();
         if(id === 'designPanel') syncDesignUI();
+        if(id === 'customPanel') renderCustomList();
     }
+
     function saveToHistory(eq, res) {
         historyData.unshift({ eq, res });
         if(historyData.length > 20) historyData.pop();
         localStorage.setItem('procalc_history_data', JSON.stringify(historyData));
     }
+
     function renderHistoryUI() {
         const list = document.getElementById('historyList');
         list.innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>';
     }
+
+    let isAdvanced = false;
     function toggleAdvanced() {
         isAdvanced = !isAdvanced;
         document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
