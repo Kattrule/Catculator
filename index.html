@@ -153,8 +153,8 @@
     <div class="panel-header"><h2>Egna Formler</h2><button class="top-btn" onclick="togglePanel('customPanel')">Klar</button></div>
     <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
         <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.4;">
-            Skapa en egen genväg! Skriv din formel och använd bokstaven <b>x</b> där du vill att ditt inmatade värde ska placeras.<br>
-            <i>Exempel: (1821 * x) / 5000</i>
+            Skapa en egen genväg! Skriv din formel och använd <b>?</b> där du vill att ditt inmatade värde ska placeras.<br>
+            <i>Exempel: (1821 * ?) / 5000</i>
         </p>
         <input type="text" id="customName" class="conv-input" placeholder="Namn (t.ex. Min Uträkning)">
         <input type="text" id="customMath" class="conv-input" placeholder="Formel med x (t.ex. x * 0.8)">
@@ -239,25 +239,36 @@
     function insertAtCursor(val) {
         const start = input.selectionStart || 0;
         input.value = input.value.substring(0, start) + val + input.value.substring(input.selectionEnd || 0);
-        input.selectionStart = input.selectionEnd = start + val.length;
-        input.focus();
+        input.focus(); // Tvinga tillbaka markören till skärmen
+        input.selectionStart = input.selectionEnd = start + val.length; // Placera den precis efter det vi la till
         livePreview();
     }
+
     function deleteAtCursor() {
         const start = input.selectionStart || 0;
         if(start > 0) {
             input.value = input.value.substring(0, start-1) + input.value.substring(start);
-            input.selectionStart = input.selectionEnd = start-1;
+            input.focus(); // Tvinga tillbaka markören
+            input.selectionStart = input.selectionEnd = start - 1; // Flytta bak markören exakt ett steg
+        } else {
+            input.focus(); // Även om vi inte kunde sudda, behåll markören synlig
         }
         livePreview();
     }
-    function clearDisplay() { input.value = ''; preview.innerText = ''; }
+
+    function clearDisplay() { 
+        input.value = ''; 
+        preview.innerText = ''; 
+        input.focus(); // Få tillbaka markören när vi rensar allt
+    }
+
     function insertSmartParenthesis() {
         const before = input.value.substring(0, input.selectionStart);
         const open = (before.match(/\(/g) || []).length;
         const close = (before.match(/\)/g) || []).length;
         insertAtCursor(open > close && /[\d\)]/.test(before.trim().slice(-1)) ? ')' : '(');
     }
+
     function livePreview() {
         try {
             let math = input.value.replace(/×/g, '*').replace(/÷/g, '/');
@@ -266,17 +277,23 @@
             if(res !== undefined && !isNaN(res)) preview.innerText = '= ' + parseFloat(res.toFixed(8));
         } catch(e) { preview.innerText = ''; }
     }
+
     function calculate() {
         try {
-            if(!input.value) return;
+            if(!input.value) { input.focus(); return; }
             let math = input.value.replace(/×/g, '*').replace(/÷/g, '/');
             let res = eval(math);
             let formatted = parseFloat(res.toFixed(8)).toString();
             saveToHistory(input.value, formatted);
             input.value = formatted;
             preview.innerText = '';
-        } catch(e) { preview.innerText = 'Fel'; }
+            input.focus(); // Få tillbaka markören efter vi tryckt på =
+        } catch(e) { 
+            preview.innerText = 'Fel'; 
+            input.focus(); 
+        }
     }
+
 
     // --- KONVERTERARE & EGNA FORMLER ---
     const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
@@ -359,7 +376,7 @@
         const formula = document.getElementById('customMath').value.trim();
         
         if(!name || !formula) return alert("Fyll i både namn och formel!");
-        if(!formula.toLowerCase().includes("-")) return alert("Din formel måste innehålla bokstaven 'x' där värdet ska vara!");
+        if(!formula.toLowerCase().includes("?")) return alert("Din formel måste innehålla '?' där värdet ska vara!");
 
         customFormulas[name] = formula;
         localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas));
