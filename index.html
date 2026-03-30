@@ -34,16 +34,14 @@
         .display-main { width: 100%; background: transparent; border: none; font-size: 3rem; text-align: right; outline: none; caret-color: var(--accent); padding: 0; }
         .result-preview { text-align: right; color: var(--accent) !important; opacity: 0.7; font-size: 1.4rem; min-height: 1.6rem; margin-top: 5px; }
 
-        .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: var(--bg-color); flex: 2.5; align-content: start; }
-        button { border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); padding: 15px 0; }
+        .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: var(--bg-color); flex: 2.5; }
+        button { border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
         button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
         
         .num-btn { background: var(--btn-num); } 
         .operator { color: var(--accent) !important; background: var(--btn-op); }
         .clear-btn { color: #ef4444 !important; background: var(--btn-op); }
         .equal-btn { background: var(--equal-bg); color: #000 !important; font-weight: bold; }
-
-        .adv-key { display: none; background: rgba(56, 189, 248, 0.1); font-size: 1.2rem; }
 
         .conv-area { display: none; flex-direction: column; gap: 15px; padding: 15px; background: var(--bg-color); flex: 2.5; overflow-y: auto; }
         .conv-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
@@ -84,27 +82,22 @@
     </div>
 
     <div class="keys" id="mainKeys">
-        <button class="adv-key operator" onclick="insertAtCursor('sin(')">sin</button>
-        <button class="adv-key operator" onclick="insertAtCursor('cos(')">cos</button>
-        <button class="adv-key operator" onclick="insertAtCursor('tan(')">tan</button>
-        <button class="adv-key operator" onclick="insertAtCursor('π')">π</button>
-
         <button class="clear-btn" onclick="clearDisplay()">C</button>
-        <button class="operator" onclick="insertAtCursor(' % ')">%</button>
+        <button id="op-1" class="operator" onclick="insertAtCursor(' % ')">%</button>
         <button class="operator" onclick="insertSmartParenthesis()">( )</button>
-        <button class="operator" onclick="insertAtCursor('/')">÷</button>
+        <button id="op-2" class="operator" onclick="insertAtCursor('/')">÷</button>
         <button class="num-btn" onclick="insertAtCursor('7')">7</button>
         <button class="num-btn" onclick="insertAtCursor('8')">8</button>
         <button class="num-btn" onclick="insertAtCursor('9')">9</button>
-        <button class="operator" onclick="insertAtCursor('*')">×</button>
+        <button id="op-3" class="operator" onclick="insertAtCursor('*')">×</button>
         <button class="num-btn" onclick="insertAtCursor('4')">4</button>
         <button class="num-btn" onclick="insertAtCursor('5')">5</button>
         <button class="num-btn" onclick="insertAtCursor('6')">6</button>
-        <button class="operator" onclick="insertAtCursor('-')">-</button>
+        <button id="op-4" class="operator" onclick="insertAtCursor('-')">-</button>
         <button class="num-btn" onclick="insertAtCursor('1')">1</button>
         <button class="num-btn" onclick="insertAtCursor('2')">2</button>
         <button class="num-btn" onclick="insertAtCursor('3')">3</button>
-        <button class="operator" onclick="insertAtCursor('+')">+</button>
+        <button id="op-5" class="operator" onclick="insertAtCursor('+')">+</button>
         <button class="num-btn" onclick="insertAtCursor('.')">.</button>
         <button class="num-btn" onclick="insertAtCursor('0')">0</button>
         <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
@@ -237,17 +230,7 @@
         }
     }
 
-    // --- KALKYLATOR LOGIK (Nu med Pi och Trigonometri) ---
-    function formatMathForEval(str) {
-        // Översätter snygga symboler till maskinkod innan den räknar ut
-        return str.replace(/×/g, '*')
-                  .replace(/÷/g, '/')
-                  .replace(/π/g, 'Math.PI')
-                  .replace(/sin\(/g, 'Math.sin(')
-                  .replace(/cos\(/g, 'Math.cos(')
-                  .replace(/tan\(/g, 'Math.tan(');
-    }
-
+    // --- KALKYLATOR LOGIK ---
     function insertAtCursor(val) {
         const start = input.selectionStart || 0;
         input.value = input.value.substring(0, start) + val + input.value.substring(input.selectionEnd || 0);
@@ -265,27 +248,24 @@
         livePreview();
     }
     function clearDisplay() { input.value = ''; preview.innerText = ''; input.focus(); }
-    
     function insertSmartParenthesis() {
         const before = input.value.substring(0, input.selectionStart);
         const open = (before.match(/\(/g) || []).length;
         const close = (before.match(/\)/g) || []).length;
-        insertAtCursor(open > close && /[\d\)\π]/.test(before.trim().slice(-1)) ? ')' : '(');
+        insertAtCursor(open > close && /[\d\)]/.test(before.trim().slice(-1)) ? ')' : '(');
     }
-    
     function livePreview() {
         try {
-            let math = formatMathForEval(input.value);
+            let math = input.value.replace(/×/g, '*').replace(/÷/g, '/');
             if(!math.trim()) { preview.innerText = ''; return; }
             let res = eval(math);
             if(res !== undefined && !isNaN(res)) preview.innerText = '= ' + parseFloat(res.toFixed(8));
         } catch(e) { preview.innerText = ''; }
     }
-    
     function calculate() {
         try {
             if(!input.value) { input.focus(); return; }
-            let math = formatMathForEval(input.value);
+            let math = input.value.replace(/×/g, '*').replace(/÷/g, '/');
             let res = eval(math);
             let formatted = parseFloat(res.toFixed(8)).toString();
             saveToHistory(input.value, formatted);
@@ -329,13 +309,19 @@
             toSel.disabled = true;
             
             const formula = customFormulas[fromVal.replace("custom_", "")];
+            
+            // Leta efter ord som börjar på ?, t.ex. ?pris, ?moms, eller bara ?
             const matches = formula.match(/\?[a-zåäö0-9_]*/gi);
             
             if (matches && matches.length > 0) {
+                // Ta bort dubbletter så vi bara skapar en inmatningsruta per unikt ord
                 const uniqueVars = [...new Set(matches)];
+                
                 uniqueVars.forEach((v, i) => {
                     let displayName = v === '?' ? 'Värde' : v.replace('?', '');
+                    // Capitalize första bokstaven för att det ska se snyggare ut
                     displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                    
                     dynInputs.innerHTML += `<input type="number" data-var="${v}" class="conv-input" placeholder="${displayName}..." oninput="runConv()">`;
                 });
             } else {
@@ -358,110 +344,25 @@
         if (from.startsWith("custom_")) {
             const formula = customFormulas[from.replace("custom_", "")];
             try {
-                let mathStr = formatMathForEval(formula.replace(/,/g, '.'));
+                let mathStr = formula.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
+                
+                // Hämta alla dynamiska rutor vi skapat
                 const inputs = document.querySelectorAll('#dynamicInputs .conv-input');
                 
+                // Sortera efter längd på namnet så vi ersätter "?prisTotalt" före "?pris" för att undvika fel
                 let varList = Array.from(inputs).map(el => ({
                     name: el.getAttribute('data-var'),
                     val: el.value !== "" ? el.value.replace(',', '.') : '0'
                 })).sort((a, b) => b.name.length - a.name.length);
 
+                // Ersätt orden i formeln med siffrorna
                 varList.forEach(v => {
+                    // Skydda frågetecknet så datorn förstår det som text
                     let safeName = v.name.replace(/\?/g, '\\?'); 
+                    // Byt ut i strängen
                     mathStr = mathStr.replace(new RegExp(safeName + '(?![a-zåäö0-9_])', 'gi'), v.val);
                 });
 
                 res = eval(mathStr);
                 if(!isFinite(res) || isNaN(res)) throw new Error();
-            } catch(e) { 
-                document.getElementById('convResBtn').innerText = "Fel i formel!"; 
-                return; 
-            }
-        } else {
-            let el = document.querySelector('#dynamicInputs .conv-input');
-            if(!el) return;
-            let rawVal = el.value.replace(',', '.');
-            const v = parseFloat(rawVal);
-            
-            if(isNaN(v) || rawVal === "") { document.getElementById('convResBtn').innerText = "Resultat: 0"; return; }
-            
-            if(unitCat[from] === "Cirkel") {
-                let r = from==='Radie'?v : from==='Diameter'?v/2 : from==='Omkrets'?v/(2*Math.PI) : Math.sqrt(v/Math.PI);
-                res = to==='Radie'?r : to==='Diameter'?r*2 : to==='Omkrets'?2*Math.PI*r : Math.PI*r*r;
-            } else { 
-                res = (v / unitRates[from]) * unitRates[to]; 
-            }
-        }
-
-        lastConvResult = parseFloat(res.toFixed(5)).toString();
-        document.getElementById('convResBtn').innerText = "Resultat: " + lastConvResult;
-    }
-
-    function saveCustomFormula() {
-        const name = document.getElementById('customName').value.trim();
-        const formula = document.getElementById('customMath').value.trim();
-        if(!name || !formula || !formula.includes("?")) return alert("Fyll i namn och en formel med minst ett frågetecken (?)");
-        customFormulas[name] = formula;
-        localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas));
-        document.getElementById('customName').value = ''; document.getElementById('customMath').value = '';
-        renderCustomList(); initConv();
-    }
-
-    function renderCustomList() {
-        const list = document.getElementById('customList'); list.innerHTML = "";
-        for(let fName in customFormulas) {
-            list.innerHTML += `<div class="custom-item"><div><strong>${fName}</strong><br><small>${customFormulas[fName]}</small></div><button class="del-btn" onclick="deleteCustomFormula('${fName}')">Ta bort</button></div>`;
-        }
-    }
-
-    function deleteCustomFormula(fName) {
-        if(confirm(`Ta bort formeln ${fName}?`)) { delete customFormulas[fName]; localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas)); renderCustomList(); initConv(); }
-    }
-
-    function grabFromDisplay() { 
-        try { 
-            let res = eval(formatMathForEval(input.value)); 
-            if(!isNaN(res)) { 
-                let el = document.querySelector('#dynamicInputs .conv-input'); 
-                if(el) { el.value = res; runConv(); }
-            } 
-        } catch(e) {} 
-    }
-    
-    function pasteConv() { if(lastConvResult) { insertAtCursor(lastConvResult); toggleConverter(); } }
-    function pasteAndOp(op) { if(lastConvResult) { insertAtCursor(lastConvResult + op); toggleConverter(); } }
-    function pasteAndCalc() { if(lastConvResult) { insertAtCursor(lastConvResult); calculate(); toggleConverter(); } }
-
-    // --- PANELER & HISTORIK ---
-    function togglePanel(id) {
-        const p = document.getElementById(id); const isOpen = p.style.display === 'flex';
-        document.querySelectorAll('.panel').forEach(el => el.style.display = 'none');
-        p.style.display = isOpen ? 'none' : 'flex';
-        if(id === 'histPanel') renderHistoryUI();
-        if(id === 'designPanel') syncDesignUI();
-        if(id === 'customPanel') renderCustomList();
-    }
-
-    function saveToHistory(eq, res) { historyData.unshift({ eq, res }); if(historyData.length > 20) historyData.pop(); localStorage.setItem('procalc_history_data', JSON.stringify(historyData)); }
-    
-    function renderHistoryUI() {
-        document.getElementById('historyList').innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>';
-    }
-
-    // --- AVANCERAT LÄGE ---
-    let isAdvanced = false;
-    function toggleAdvanced() {
-        isAdvanced = !isAdvanced; 
-        document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
-        
-        // Visa eller dölj den översta raden med knappar
-        const advKeys = document.querySelectorAll('.adv-key');
-        advKeys.forEach(btn => {
-            btn.style.display = isAdvanced ? 'flex' : 'none';
-        });
-    }
-
-    window.onload = () => { loadDesign(); const savedHist = localStorage.getItem('procalc_history_data'); if(savedHist) historyData = JSON.parse(savedHist); input.focus(); };
-</script>
-</body>
-</html>
+            } catch(e) {
