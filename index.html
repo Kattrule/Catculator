@@ -108,7 +108,7 @@
         <div class="conv-row">
             <select id="convFrom" class="conv-select" onchange="updateConvTo()"></select>
             <span style="font-size:1.5rem;">➔</span>
-            <select id="convTo" class="conv-select" onchange="runConv()"></select>
+            <select id="convTo" class="conv-select" onchange="buildDynamicInputs()"></select>
         </div>
         
         <div class="conv-row" style="align-items: flex-start;">
@@ -167,8 +167,10 @@
     <div class="panel-header"><h2>Egna Formler</h2><button class="top-btn" onclick="togglePanel('customPanel')">Klar</button></div>
     <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
         <p style="color: var(--text-muted); font-size: 0.9rem;">
-            Sätt ett <b>?</b> framför ord du vill fylla i, så skapar appen automatiskt inmatningsrutor för dem.<br><br>
-            <i>Exempel: (?pris * ?moms) / ?antal</i>
+            Sätt ett <b>?</b> framför ord du vill fylla i, så skapar appen automatiskt inmatningsrutor.<br><br>
+            <b>Kedja formler:</b> Avsluta en formel med <b>&lt;</b> och starta en annan med <b>&gt;</b> för att koppla ihop dem!<br>
+            <i>Exempel 1: 1 + ? / &lt;</i><br>
+            <i>Exempel 2: &gt; 5 * ?</i>
         </p>
         <input type="text" id="customName" class="conv-input" placeholder="Namn på formeln">
         <input type="text" id="customMath" class="conv-input" placeholder="Formel (t.ex: ?lön - ?skatt)">
@@ -299,39 +301,79 @@
     function updateConvTo() {
         const fromVal = document.getElementById('convFrom').value;
         const toSel = document.getElementById('convTo');
-        const dynInputs = document.getElementById('dynamicInputs');
         
         toSel.innerHTML = "";
-        dynInputs.innerHTML = "";
 
         if (fromVal.startsWith("custom_")) {
+            const fName = fromVal.replace("custom_", "");
+            let formula1 = customFormulas[fName] || "";
+            
             toSel.add(new Option("Uträkning", "result"));
-            toSel.disabled = true;
             
-            const formula = customFormulas[fromVal.replace("custom_", "")];
-            
-            // Leta efter ord som börjar på ?, t.ex. ?pris, ?moms, eller bara ?
-            const matches = formula.match(/\?[a-zåäö0-9_]*/gi);
-            
-            if (matches && matches.length > 0) {
-                // Ta bort dubbletter så vi bara skapar en inmatningsruta per unikt ord
-                const uniqueVars = [...new Set(matches)];
-                
-                uniqueVars.forEach((v, i) => {
-                    let displayName = v === '?' ? 'Värde' : v.replace('?', '');
-                    // Capitalize första bokstaven för att det ska se snyggare ut
-                    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-                    
-                    dynInputs.innerHTML += `<input type="number" data-var="${v}" class="conv-input" placeholder="${displayName}..." oninput="runConv()">`;
-                });
+            if (formula1.includes("<")) {
+                toSel.disabled = false;
+                for (let f in customFormulas) {
+                    if (customFormulas[f].includes(">")) {
+                        toSel.add(new Option("⚙️ " + f, "customchain_" + f));
+                    }
+                }
             } else {
-                dynInputs.innerHTML = `<input type="number" data-var="?" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
+                toSel.disabled = true;
             }
+            buildDynamicInputs();
         } else {
             toSel.disabled = false;
             const targetCat = unitCat[fromVal];
             for(let u in unitCat) if(unitCat[u] === targetCat && u !== fromVal) toSel.add(new Option(u, u));
-            dynInputs.innerHTML = `<input type="number" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
+            buildDynamicInputs(); 
+        }
+    }
+
+    function buildDynamicInputs() {
+        const fromVal = document.getElementById('convFrom').value;
+        const toVal = document.getElementById('convTo').value;
+        const dynInputs = document.getElementById('dynamicInputs');
+        
+        if (!fromVal.startsWith("custom_")) {
+            if (dynInputs.querySelector('input[data-var]')) {
+                dynInputs.innerHTML = `<input type="number" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
+            } else if (dynInputs.innerHTML === "") {
+                dynInputs.innerHTML = `<input type="number" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
+            }
+            runConv();
+            return;
+        }
+        
+        let formula = customFormulas[fromVal.replace("custom_", "")].replace(/</g, '');
+        
+        if (toVal && toVal.startsWith("customchain_")) {
+            const chainFormula = customFormulas[toVal.replace("customchain_", "")].replace(/</g, '');
+            formula = chainFormula.replace(/>/g, '(' + formula + ')');
+        }
+        
+        dynInputs.setAttribute('data-active-formula', formula);
+        
+        let existingVals = {};
+        document.querySelectorAll('#dynamicInputs .conv-input').forEach(el => {
+            if (el.getAttribute('data-var')) {
+                existingVals[el.getAttribute('data-var')] = el.value;
+            }
+        });
+        
+        const matches = formula.match(/\?[a-zåäö0-9_]*/gi);
+        dynInputs.innerHTML = "";
+        
+        if (matches && matches.length > 0) {
+            const uniqueVars = [...new Set(matches)];
+            uniqueVars.forEach((v) => {
+                let displayName = v === '?' ? 'Värde' : v.replace('?', '');
+                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                let val = existingVals[v] !== undefined ? existingVals[v] : "";
+                dynInputs.innerHTML += `<input type="number" data-var="${v}" class="conv-input" placeholder="${displayName}..." value="${val}" oninput="runConv()">`;
+            });
+        } else {
+            let val = existingVals["?"] !== undefined ? existingVals["?"] : "";
+            dynInputs.innerHTML = `<input type="number" data-var="?" class="conv-input" placeholder="Värde..." value="${val}" oninput="runConv()">`;
         }
         runConv();
     }
@@ -342,24 +384,20 @@
         let res = 0;
 
         if (from.startsWith("custom_")) {
-            const formula = customFormulas[from.replace("custom_", "")];
+            const dynInputs = document.getElementById('dynamicInputs');
+            let formula = dynInputs.getAttribute('data-active-formula');
+            
             try {
                 let mathStr = formula.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
-                
-                // Hämta alla dynamiska rutor vi skapat
                 const inputs = document.querySelectorAll('#dynamicInputs .conv-input');
                 
-                // Sortera efter längd på namnet så vi ersätter "?prisTotalt" före "?pris" för att undvika fel
                 let varList = Array.from(inputs).map(el => ({
                     name: el.getAttribute('data-var'),
                     val: el.value !== "" ? el.value.replace(',', '.') : '0'
                 })).sort((a, b) => b.name.length - a.name.length);
 
-                // Ersätt orden i formeln med siffrorna
                 varList.forEach(v => {
-                    // Skydda frågetecknet så datorn förstår det som text
                     let safeName = v.name.replace(/\?/g, '\\?'); 
-                    // Byt ut i strängen
                     mathStr = mathStr.replace(new RegExp(safeName + '(?![a-zåäö0-9_])', 'gi'), v.val);
                 });
 
@@ -414,7 +452,7 @@
         try { 
             let res = eval(input.value.replace(/×/g, '*').replace(/÷/g, '/')); 
             if(!isNaN(res)) { 
-                let el = document.querySelector('#dynamicInputs .conv-input'); // Lägger i första rutan
+                let el = document.querySelector('#dynamicInputs .conv-input');
                 if(el) {
                     el.value = res; 
                     runConv(); 
