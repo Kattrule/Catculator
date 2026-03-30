@@ -71,7 +71,7 @@
 <div class="calculator">
     <div class="top-bar">
         <button id="advToggleBtn" class="top-btn" onclick="toggleAdvanced()">Avancerat</button>
-        <button class="top-btn" onclick="toggleConverter()">Konv</button>
+        <button class="top-btn" onclick="toggleConverter()">Konv / Formler</button>
         <button class="top-btn" onclick="togglePanel('histPanel')">Hist</button>
         <button class="top-btn" onclick="togglePanel('designPanel')">⚙️</button>
     </div>
@@ -113,7 +113,7 @@
         
         <div class="conv-row" style="align-items: flex-start;">
             <div id="dynamicInputs" style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
-                <input type="number" id="convInput_1" class="conv-input" placeholder="Värde..." oninput="runConv()">
+                <input type="number" id="convInput_0" class="conv-input" placeholder="Värde..." oninput="runConv()">
             </div>
             <button class="fetch-btn" onclick="grabFromDisplay()">Hämta</button>
         </div>
@@ -167,11 +167,11 @@
     <div class="panel-header"><h2>Egna Formler</h2><button class="top-btn" onclick="togglePanel('customPanel')">Klar</button></div>
     <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
         <p style="color: var(--text-muted); font-size: 0.9rem;">
-            Använd <b>?</b> för ett enstaka värde. Behöver du flera rutor (upp till 6 st)? Skriv <b>?1</b>, <b>?2</b>, <b>?3</b> osv.<br><br>
-            <i>Exempel 1: (1821 * 0.?) / 5000<br>Exempel 2: (?1 * ?2) + ?3</i>
+            Sätt ett <b>?</b> framför ord du vill fylla i, så skapar appen automatiskt inmatningsrutor för dem.<br><br>
+            <i>Exempel: (?pris * ?moms) / ?antal</i>
         </p>
         <input type="text" id="customName" class="conv-input" placeholder="Namn på formeln">
-        <input type="text" id="customMath" class="conv-input" placeholder="Formel med ? eller ?1, ?2">
+        <input type="text" id="customMath" class="conv-input" placeholder="Formel (t.ex: ?lön - ?skatt)">
         <button class="equal-btn" style="padding: 15px; border-radius: 8px;" onclick="saveCustomFormula()">Spara Formel</button>
         <div id="customList" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;"></div>
     </div>
@@ -275,7 +275,7 @@
         } catch(e) { preview.innerText = 'Fel'; input.focus(); }
     }
 
-    // --- KONVERTERARE & FLERA FÄLT LOGIK ---
+    // --- KONVERTERARE & DYNAMISKA FORMLER ---
     const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
     const unitRates = { "km/h":1, "mph":0.621371, "m/s":0.277778, "cm":1, "tum":0.393701, "meter":0.01 };
     let lastConvResult = "";
@@ -296,7 +296,6 @@
         updateConvTo();
     }
 
-    // Skapar rätt antal inmatningsfält beroende på formel
     function updateConvTo() {
         const fromVal = document.getElementById('convFrom').value;
         const toSel = document.getElementById('convTo');
@@ -310,27 +309,29 @@
             toSel.disabled = true;
             
             const formula = customFormulas[fromVal.replace("custom_", "")];
-            let maxVars = 0;
             
-            // Kolla efter ?1 till ?6 i formeln
-            for(let i=1; i<=6; i++) {
-                if(formula.includes('?' + i)) maxVars = i;
-            }
+            // Leta efter ord som börjar på ?, t.ex. ?pris, ?moms, eller bara ?
+            const matches = formula.match(/\?[a-zåäö0-9_]*/gi);
             
-            if(maxVars > 0) {
-                // Skapa fält för alla variabler
-                for(let i=1; i<=maxVars; i++) {
-                    dynInputs.innerHTML += `<input type="number" id="convInput_${i}" class="conv-input" placeholder="Värde för ?${i}" oninput="runConv()">`;
-                }
+            if (matches && matches.length > 0) {
+                // Ta bort dubbletter så vi bara skapar en inmatningsruta per unikt ord
+                const uniqueVars = [...new Set(matches)];
+                
+                uniqueVars.forEach((v, i) => {
+                    let displayName = v === '?' ? 'Värde' : v.replace('?', '');
+                    // Capitalize första bokstaven för att det ska se snyggare ut
+                    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                    
+                    dynInputs.innerHTML += `<input type="number" data-var="${v}" class="conv-input" placeholder="${displayName}..." oninput="runConv()">`;
+                });
             } else {
-                // Standard: Bara ett vanligt ? i formeln
-                dynInputs.innerHTML = `<input type="number" id="convInput_1" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
+                dynInputs.innerHTML = `<input type="number" data-var="?" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
             }
         } else {
             toSel.disabled = false;
             const targetCat = unitCat[fromVal];
             for(let u in unitCat) if(unitCat[u] === targetCat && u !== fromVal) toSel.add(new Option(u, u));
-            dynInputs.innerHTML = `<input type="number" id="convInput_1" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
+            dynInputs.innerHTML = `<input type="number" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
         }
         runConv();
     }
@@ -344,24 +345,23 @@
             const formula = customFormulas[from.replace("custom_", "")];
             try {
                 let mathStr = formula.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
-                let hasNumberedVars = false;
                 
-                // Byt ut ?1, ?2 osv mot vad användaren skrivit in (standard är 0 om det är tomt)
-                for(let i=1; i<=6; i++) {
-                    if(mathStr.includes('?' + i)) {
-                        hasNumberedVars = true;
-                        let el = document.getElementById('convInput_' + i);
-                        let v = el && el.value !== "" ? el.value.replace(',', '.') : '0';
-                        mathStr = mathStr.replace(new RegExp('\\?' + i, 'g'), v);
-                    }
-                }
+                // Hämta alla dynamiska rutor vi skapat
+                const inputs = document.querySelectorAll('#dynamicInputs .conv-input');
                 
-                // Om formeln bara har ett standard ?
-                if(!hasNumberedVars && mathStr.includes('?')) {
-                    let el = document.getElementById('convInput_1');
-                    let v = el && el.value !== "" ? el.value.replace(',', '.') : '0';
-                    mathStr = mathStr.replace(/\?/g, v);
-                }
+                // Sortera efter längd på namnet så vi ersätter "?prisTotalt" före "?pris" för att undvika fel
+                let varList = Array.from(inputs).map(el => ({
+                    name: el.getAttribute('data-var'),
+                    val: el.value !== "" ? el.value.replace(',', '.') : '0'
+                })).sort((a, b) => b.name.length - a.name.length);
+
+                // Ersätt orden i formeln med siffrorna
+                varList.forEach(v => {
+                    // Skydda frågetecknet så datorn förstår det som text
+                    let safeName = v.name.replace(/\?/g, '\\?'); 
+                    // Byt ut i strängen
+                    mathStr = mathStr.replace(new RegExp(safeName + '(?![a-zåäö0-9_])', 'gi'), v.val);
+                });
 
                 res = eval(mathStr);
                 if(!isFinite(res) || isNaN(res)) throw new Error();
@@ -370,7 +370,7 @@
                 return; 
             }
         } else {
-            let el = document.getElementById('convInput_1');
+            let el = document.querySelector('#dynamicInputs .conv-input');
             if(!el) return;
             let rawVal = el.value.replace(',', '.');
             const v = parseFloat(rawVal);
@@ -414,7 +414,7 @@
         try { 
             let res = eval(input.value.replace(/×/g, '*').replace(/÷/g, '/')); 
             if(!isNaN(res)) { 
-                let el = document.getElementById('convInput_1'); // Lägger alltid in i fält 1 (eller standard-fältet)
+                let el = document.querySelector('#dynamicInputs .conv-input'); // Lägger i första rutan
                 if(el) {
                     el.value = res; 
                     runConv(); 
