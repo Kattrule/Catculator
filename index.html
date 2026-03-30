@@ -64,6 +64,8 @@
 
         .custom-item { background: var(--panel-bg); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
         .del-btn { background: #ef4444; color: white !important; font-size: 1rem; padding: 10px; border-radius: 6px; }
+
+        .version-tag { text-align: center; font-size: 0.7rem; color: var(--text-muted); padding-bottom: 5px; opacity: 0.5; }
     </style>
 </head>
 <body>
@@ -71,8 +73,8 @@
 <div class="calculator">
     <div class="top-bar">
         <button id="advToggleBtn" class="top-btn" onclick="toggleAdvanced()">Avancerat</button>
-        <button class="top-btn" onclick="toggleConverter()">Konv / Formler</button>
-        <button class="top-btn" onclick="togglePanel('histPanel')">Hist</button>
+        <button class="top-btn" onclick="toggleConverter()">🔁</button>
+        <button class="top-btn" onclick="togglePanel('histPanel')">📃</button>
         <button class="top-btn" onclick="togglePanel('designPanel')">⚙️</button>
     </div>
 
@@ -112,9 +114,7 @@
         </div>
         
         <div class="conv-row" style="align-items: flex-start;">
-            <div id="dynamicInputs" style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
-                <input type="number" id="convInput_0" class="conv-input" placeholder="Värde..." oninput="runConv()">
-            </div>
+            <div id="dynamicInputs" style="display: flex; flex-direction: column; gap: 10px; flex: 1;"></div>
             <button class="fetch-btn" onclick="grabFromDisplay()">Hämta</button>
         </div>
 
@@ -131,6 +131,7 @@
         <button class="top-btn" onclick="togglePanel('customPanel')" style="margin-top:15px; padding:15px; background: rgba(255,255,255,0.05); color: var(--text-color) !important;">+ Skapa egen formel</button>
         <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
     </div>
+    <div class="version-tag">V 3.2</div>
 </div>
 
 <div class="panel" id="histPanel">
@@ -275,7 +276,7 @@
         } catch(e) { preview.innerText = 'Fel'; input.focus(); }
     }
 
-    // --- KONVERTERARE & DYNAMISKA FORMLER ---
+    // --- KONVERTERARE & FLERA FÄLT LOGIK ---
     const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
     const unitRates = { "km/h":1, "mph":0.621371, "m/s":0.277778, "cm":1, "tum":0.393701, "meter":0.01 };
     let lastConvResult = "";
@@ -300,28 +301,19 @@
         const fromVal = document.getElementById('convFrom').value;
         const toSel = document.getElementById('convTo');
         const dynInputs = document.getElementById('dynamicInputs');
-        
         toSel.innerHTML = "";
         dynInputs.innerHTML = "";
 
         if (fromVal.startsWith("custom_")) {
             toSel.add(new Option("Uträkning", "result"));
             toSel.disabled = true;
-            
             const formula = customFormulas[fromVal.replace("custom_", "")];
-            
-            // Leta efter ord som börjar på ?, t.ex. ?pris, ?moms, eller bara ?
             const matches = formula.match(/\?[a-zåäö0-9_]*/gi);
-            
             if (matches && matches.length > 0) {
-                // Ta bort dubbletter så vi bara skapar en inmatningsruta per unikt ord
                 const uniqueVars = [...new Set(matches)];
-                
-                uniqueVars.forEach((v, i) => {
+                uniqueVars.forEach((v) => {
                     let displayName = v === '?' ? 'Värde' : v.replace('?', '');
-                    // Capitalize första bokstaven för att det ska se snyggare ut
                     displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-                    
                     dynInputs.innerHTML += `<input type="number" data-var="${v}" class="conv-input" placeholder="${displayName}..." oninput="runConv()">`;
                 });
             } else {
@@ -331,60 +323,39 @@
             toSel.disabled = false;
             const targetCat = unitCat[fromVal];
             for(let u in unitCat) if(unitCat[u] === targetCat && u !== fromVal) toSel.add(new Option(u, u));
-            dynInputs.innerHTML = `<input type="number" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
+            dynInputs.innerHTML = `<input type="number" data-var="?" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
         }
         runConv();
     }
 
     function runConv() {
         const from = document.getElementById('convFrom').value;
-        const to = document.getElementById('convTo').value;
         let res = 0;
-
         if (from.startsWith("custom_")) {
             const formula = customFormulas[from.replace("custom_", "")];
             try {
                 let mathStr = formula.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
-                
-                // Hämta alla dynamiska rutor vi skapat
                 const inputs = document.querySelectorAll('#dynamicInputs .conv-input');
-                
-                // Sortera efter längd på namnet så vi ersätter "?prisTotalt" före "?pris" för att undvika fel
                 let varList = Array.from(inputs).map(el => ({
                     name: el.getAttribute('data-var'),
                     val: el.value !== "" ? el.value.replace(',', '.') : '0'
                 })).sort((a, b) => b.name.length - a.name.length);
-
-                // Ersätt orden i formeln med siffrorna
                 varList.forEach(v => {
-                    // Skydda frågetecknet så datorn förstår det som text
                     let safeName = v.name.replace(/\?/g, '\\?'); 
-                    // Byt ut i strängen
                     mathStr = mathStr.replace(new RegExp(safeName + '(?![a-zåäö0-9_])', 'gi'), v.val);
                 });
-
                 res = eval(mathStr);
-                if(!isFinite(res) || isNaN(res)) throw new Error();
-            } catch(e) { 
-                document.getElementById('convResBtn').innerText = "Fel i formel!"; 
-                return; 
-            }
+            } catch(e) { document.getElementById('convResBtn').innerText = "Fel i formel!"; return; }
         } else {
             let el = document.querySelector('#dynamicInputs .conv-input');
-            if(!el) return;
-            let rawVal = el.value.replace(',', '.');
-            const v = parseFloat(rawVal);
-            
-            if(isNaN(v) || rawVal === "") { document.getElementById('convResBtn').innerText = "Resultat: 0"; return; }
-            
+            if(!el || isNaN(parseFloat(el.value))) { document.getElementById('convResBtn').innerText = "Resultat: 0"; return; }
+            let v = parseFloat(el.value.replace(',', '.'));
+            const to = document.getElementById('convTo').value;
             if(unitCat[from] === "Cirkel") {
                 let r = from==='Radie'?v : from==='Diameter'?v/2 : from==='Omkrets'?v/(2*Math.PI) : Math.sqrt(v/Math.PI);
                 res = to==='Radie'?r : to==='Diameter'?r*2 : to==='Omkrets'?2*Math.PI*r : Math.PI*r*r;
-            } else { 
-                res = (v / unitRates[from]) * unitRates[to]; 
-            }
+            } else { res = (v / unitRates[from]) * unitRates[to]; }
         }
-
         lastConvResult = parseFloat(res.toFixed(5)).toString();
         document.getElementById('convResBtn').innerText = "Resultat: " + lastConvResult;
     }
@@ -414,11 +385,8 @@
         try { 
             let res = eval(input.value.replace(/×/g, '*').replace(/÷/g, '/')); 
             if(!isNaN(res)) { 
-                let el = document.querySelector('#dynamicInputs .conv-input'); // Lägger i första rutan
-                if(el) {
-                    el.value = res; 
-                    runConv(); 
-                }
+                let el = document.querySelector('#dynamicInputs .conv-input');
+                if(el) { el.value = res; runConv(); }
             } 
         } catch(e) {} 
     }
@@ -427,7 +395,6 @@
     function pasteAndOp(op) { if(lastConvResult) { insertAtCursor(lastConvResult + op); toggleConverter(); } }
     function pasteAndCalc() { if(lastConvResult) { insertAtCursor(lastConvResult); calculate(); toggleConverter(); } }
 
-    // --- PANELER & HISTORIK ---
     function togglePanel(id) {
         const p = document.getElementById(id); const isOpen = p.style.display === 'flex';
         document.querySelectorAll('.panel').forEach(el => el.style.display = 'none');
@@ -438,7 +405,6 @@
     }
 
     function saveToHistory(eq, res) { historyData.unshift({ eq, res }); if(historyData.length > 20) historyData.pop(); localStorage.setItem('procalc_history_data', JSON.stringify(historyData)); }
-    
     function renderHistoryUI() {
         document.getElementById('historyList').innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>';
     }
@@ -447,11 +413,4 @@
     function toggleAdvanced() {
         isAdvanced = !isAdvanced; document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
         const op1 = document.getElementById('op-1'), op2 = document.getElementById('op-2'); 
-        if(isAdvanced) { op1.innerHTML = 'sin'; op1.onclick = () => insertAtCursor('Math.sin('); op2.innerHTML = 'cos'; op2.onclick = () => insertAtCursor('Math.cos('); }
-        else { op1.innerHTML = '%'; op1.onclick = () => insertAtCursor(' % '); op2.innerHTML = '÷'; op2.onclick = () => insertAtCursor('/'); }
-    }
-
-    window.onload = () => { loadDesign(); const savedHist = localStorage.getItem('procalc_history_data'); if(savedHist) historyData = JSON.parse(savedHist); input.focus(); };
-</script>
-</body>
-</html>
+        if(isAdvanced) { op1.
