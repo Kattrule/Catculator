@@ -65,7 +65,6 @@
         .custom-item { background: var(--panel-bg); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
         .del-btn { background: #ef4444; color: white !important; font-size: 1rem; padding: 10px; border-radius: 6px; }
 
-        /* Ny CSS för versionstexten */
         .version-text { text-align: center; font-size: 0.75rem; color: var(--text-muted); padding: 5px; background: var(--bg-color); margin-top: auto; }
     </style>
 </head>
@@ -86,7 +85,7 @@
 
     <div class="keys" id="mainKeys">
         <button class="clear-btn" onclick="clearDisplay()">C</button>
-        <button id="op-1" class="operator" onclick="insertAtCursor(' % ')">%</button>
+        <button id="op-1" class="operator" onclick="insertAtCursor('%')">%</button>
         <button class="operator" onclick="insertSmartParenthesis()">( )</button>
         <button id="op-2" class="operator" onclick="insertAtCursor('/')">÷</button>
         <button class="num-btn" onclick="insertAtCursor('7')">7</button>
@@ -115,9 +114,7 @@
         </div>
         
         <div class="conv-row" style="align-items: flex-start;">
-            <div id="dynamicInputs" style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
-                <input type="number" id="convInput_0" class="conv-input" placeholder="Värde..." oninput="runConv()">
-            </div>
+            <div id="dynamicInputs" style="display: flex; flex-direction: column; gap: 10px; flex: 1;"></div>
             <button class="fetch-btn" onclick="grabFromDisplay()">Hämta</button>
         </div>
 
@@ -135,7 +132,7 @@
         <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
     </div>
 
-    <div class="version-text">V 4.1</div>
+    <div class="version-text">V 4.2 (Buggar fixade)</div>
 </div>
 
 <div class="panel" id="histPanel">
@@ -187,9 +184,21 @@
 <script>
     const input = document.getElementById('mainDisplay');
     const preview = document.getElementById('preview');
-    let historyData = [];
-    let recentColors = JSON.parse(localStorage.getItem('catcalc_recent')) || ['#38bdf8', '#10b981', '#ef4444', '#ffffff', '#0f172a', '#1e293b'];
-    let customFormulas = JSON.parse(localStorage.getItem('catcalc_custom')) || {};
+    
+    // Säker laddning av data för att förhindra krascher (Minnesförlust-fixen)
+    function safeLoad(key, defaultVal) {
+        try {
+            let data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : defaultVal;
+        } catch(e) {
+            console.warn("Kunde inte läsa " + key + ", återställer till standard.");
+            return defaultVal;
+        }
+    }
+
+    let historyData = safeLoad('catcalc_history_data', []);
+    let recentColors = safeLoad('catcalc_recent', ['#38bdf8', '#10b981', '#ef4444', '#ffffff', '#0f172a', '#1e293b']);
+    let customFormulas = safeLoad('catcalc_custom', {});
 
     // --- DESIGN ---
     const defaultDesign = {"--bg-color":"#0f172a","--panel-bg":"#1e293b","--text-color":"#ffffff","--btn-num":"#475569","--accent":"#38bdf8","--btn-op":"#1e293b","--equal-bg":"#10b981"};
@@ -223,9 +232,8 @@
         localStorage.setItem('catcalc_design', JSON.stringify(current));
     }
     function loadDesign() {
-        const saved = localStorage.getItem('catcalc_design');
-        if(saved) {
-            const d = JSON.parse(saved);
+        const d = safeLoad('catcalc_design', null);
+        if(d) {
             for(let k in d) document.documentElement.style.setProperty(k, d[k]);
         }
     }
@@ -238,6 +246,14 @@
     }
 
     // --- KALKYLATOR LOGIK ---
+    // Översätter tecken för att JavaScript ska kunna räkna korrekt
+    function parseMathString(str) {
+        return str.replace(/×/g, '*')
+                  .replace(/÷/g, '/')
+                  .replace(/,/g, '.')
+                  .replace(/%/g, '/100'); // Detta fixar procent-räknefelet!
+    }
+
     function insertAtCursor(val) {
         const start = input.selectionStart || 0;
         input.value = input.value.substring(0, start) + val + input.value.substring(input.selectionEnd || 0);
@@ -263,7 +279,7 @@
     }
     function livePreview() {
         try {
-            let math = input.value.replace(/×/g, '*').replace(/÷/g, '/');
+            let math = parseMathString(input.value);
             if(!math.trim()) { preview.innerText = ''; return; }
             let res = eval(math);
             if(res !== undefined && !isNaN(res)) preview.innerText = '= ' + parseFloat(res.toFixed(8));
@@ -272,7 +288,7 @@
     function calculate() {
         try {
             if(!input.value) { input.focus(); return; }
-            let math = input.value.replace(/×/g, '*').replace(/÷/g, '/');
+            let math = parseMathString(input.value);
             let res = eval(math);
             let formatted = parseFloat(res.toFixed(8)).toString();
             saveToHistory(input.value, formatted);
@@ -295,14 +311,12 @@
         if(isOpening) initConv();
     }
 
-    // --- HÄR ÄR ÄNDRINGEN FÖR ATT GÖMMA ">"-FORMLER ---
     function initConv() {
         const fromSel = document.getElementById('convFrom');
         fromSel.innerHTML = "";
         for(let u in unitCat) fromSel.add(new Option(u, u));
         
         for(let f in customFormulas) {
-            // Kolla om formeln INTE börjar på ">"
             if (!customFormulas[f].trim().startsWith(">")) {
                 fromSel.add(new Option("⚙️ " + f, "custom_" + f));
             }
@@ -400,7 +414,7 @@
             let formula = dynInputs.getAttribute('data-active-formula');
             
             try {
-                let mathStr = formula.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
+                let mathStr = parseMathString(formula);
                 const inputs = document.querySelectorAll('#dynamicInputs .conv-input');
                 
                 let varList = Array.from(inputs).map(el => ({
@@ -462,13 +476,10 @@
 
     function grabFromDisplay() { 
         try { 
-            let res = eval(input.value.replace(/×/g, '*').replace(/÷/g, '/')); 
+            let res = eval(parseMathString(input.value)); 
             if(!isNaN(res)) { 
                 let el = document.querySelector('#dynamicInputs .conv-input');
-                if(el) {
-                    el.value = res; 
-                    runConv(); 
-                }
+                if(el) { el.value = res; runConv(); }
             } 
         } catch(e) {} 
     }
@@ -487,7 +498,11 @@
         if(id === 'customPanel') renderCustomList();
     }
 
-    function saveToHistory(eq, res) { historyData.unshift({ eq, res }); if(historyData.length > 20) historyData.pop(); localStorage.setItem('procalc_history_data', JSON.stringify(historyData)); }
+    function saveToHistory(eq, res) { 
+        historyData.unshift({ eq, res }); 
+        if(historyData.length > 20) historyData.pop(); 
+        localStorage.setItem('catcalc_history_data', JSON.stringify(historyData)); 
+    }
     
     function renderHistoryUI() {
         document.getElementById('historyList').innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>';
@@ -498,10 +513,13 @@
         isAdvanced = !isAdvanced; document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
         const op1 = document.getElementById('op-1'), op2 = document.getElementById('op-2'); 
         if(isAdvanced) { op1.innerHTML = 'sin'; op1.onclick = () => insertAtCursor('Math.sin('); op2.innerHTML = 'cos'; op2.onclick = () => insertAtCursor('Math.cos('); }
-        else { op1.innerHTML = '%'; op1.onclick = () => insertAtCursor(' % '); op2.innerHTML = '÷'; op2.onclick = () => insertAtCursor('/'); }
+        else { op1.innerHTML = '%'; op1.onclick = () => insertAtCursor('%'); op2.innerHTML = '÷'; op2.onclick = () => insertAtCursor('/'); }
     }
 
-    window.onload = () => { loadDesign(); const savedHist = localStorage.getItem('procalc_history_data'); if(savedHist) historyData = JSON.parse(savedHist); input.focus(); };
+    window.onload = () => { 
+        loadDesign(); 
+        input.focus(); 
+    };
 </script>
 </body>
 </html>
