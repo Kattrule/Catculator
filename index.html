@@ -85,21 +85,25 @@
 
     <div class="keys" id="mainKeys">
         <button class="clear-btn" onclick="clearDisplay()">C</button>
-        <button id="op-1" class="operator" onclick="insertAtCursor('%')">%</button>
         <button class="operator" onclick="insertSmartParenthesis()">( )</button>
-        <button id="op-2" class="operator" onclick="insertAtCursor('/')">÷</button>
+        <button class="operator" onclick="insertAtCursor('%')">%</button>
+        <button id="op-div" class="operator" onclick="insertAtCursor('/')">÷</button>
+        
         <button class="num-btn" onclick="insertAtCursor('7')">7</button>
         <button class="num-btn" onclick="insertAtCursor('8')">8</button>
         <button class="num-btn" onclick="insertAtCursor('9')">9</button>
-        <button id="op-3" class="operator" onclick="insertAtCursor('*')">×</button>
+        <button id="op-mult" class="operator" onclick="insertAtCursor('*')">×</button>
+        
         <button class="num-btn" onclick="insertAtCursor('4')">4</button>
         <button class="num-btn" onclick="insertAtCursor('5')">5</button>
         <button class="num-btn" onclick="insertAtCursor('6')">6</button>
-        <button id="op-4" class="operator" onclick="insertAtCursor('-')">-</button>
+        <button id="op-sub" class="operator" onclick="insertAtCursor('-')">-</button>
+        
         <button class="num-btn" onclick="insertAtCursor('1')">1</button>
         <button class="num-btn" onclick="insertAtCursor('2')">2</button>
         <button class="num-btn" onclick="insertAtCursor('3')">3</button>
-        <button id="op-5" class="operator" onclick="insertAtCursor('+')">+</button>
+        <button id="op-add" class="operator" onclick="insertAtCursor('+')">+</button>
+        
         <button class="num-btn" onclick="insertAtCursor('.')">.</button>
         <button class="num-btn" onclick="insertAtCursor('0')">0</button>
         <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
@@ -132,7 +136,7 @@
         <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
     </div>
 
-    <div class="version-text">V 4.2 (Buggar fixade)</div>
+    <div class="version-text">V 4.3 (Procent och tangentbord fixat)</div>
 </div>
 
 <div class="panel" id="histPanel">
@@ -185,7 +189,6 @@
     const input = document.getElementById('mainDisplay');
     const preview = document.getElementById('preview');
     
-    // Säker laddning av data för att förhindra krascher (Minnesförlust-fixen)
     function safeLoad(key, defaultVal) {
         try {
             let data = localStorage.getItem(key);
@@ -245,13 +248,20 @@
         }
     }
 
-    // --- KALKYLATOR LOGIK ---
-    // Översätter tecken för att JavaScript ska kunna räkna korrekt
+    // --- KALKYLATOR LOGIK MED NY PROCENTHANTERING ---
     function parseMathString(str) {
-        return str.replace(/×/g, '*')
-                  .replace(/÷/g, '/')
-                  .replace(/,/g, '.')
-                  .replace(/%/g, '/100'); // Detta fixar procent-räknefelet!
+        // Byter ut standardtecken
+        let parsed = str.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
+
+        // Avancerad procenträkning: 
+        // Den här koden söker efter mönster som "nummer + nummer%" eller "nummer * nummer%"
+        // och gör om dem så att Javascript förstår. Tex: "100-15%" blir "100-(100*15/100)"
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*([\+\-])\s*(\d+(?:\.\d+)?)\s*%/g, "($1 $2 ($1 * ($3 / 100)))");
+        
+        // Tar hand om enkla procent som "50%" (när det inte föregås av + eller -)
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*%/g, "($1 / 100)");
+
+        return parsed;
     }
 
     function insertAtCursor(val) {
@@ -297,6 +307,26 @@
             input.focus();
         } catch(e) { preview.innerText = 'Fel'; input.focus(); }
     }
+
+    // --- TANGENTBORDSHANTERING ---
+    input.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Förhindra radbrytning etc
+            calculate();
+        } else if (event.key === 'Escape' || event.key === 'Delete') {
+             event.preventDefault();
+             clearDisplay();
+        } else if (event.key === 'Backspace') {
+             event.preventDefault();
+             deleteAtCursor();
+        } else if (['1','2','3','4','5','6','7','8','9','0','.','+','-','*','/','%','(',')'].includes(event.key)) {
+             event.preventDefault();
+             let keyToInsert = event.key;
+             if (keyToInsert === '*') keyToInsert = '×';
+             if (keyToInsert === '/') keyToInsert = '÷';
+             insertAtCursor(keyToInsert);
+        }
+    });
 
     // --- KONVERTERARE & DYNAMISKA FORMLER ---
     const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
@@ -511,9 +541,17 @@
     let isAdvanced = false;
     function toggleAdvanced() {
         isAdvanced = !isAdvanced; document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
-        const op1 = document.getElementById('op-1'), op2 = document.getElementById('op-2'); 
-        if(isAdvanced) { op1.innerHTML = 'sin'; op1.onclick = () => insertAtCursor('Math.sin('); op2.innerHTML = 'cos'; op2.onclick = () => insertAtCursor('Math.cos('); }
-        else { op1.innerHTML = '%'; op1.onclick = () => insertAtCursor('%'); op2.innerHTML = '÷'; op2.onclick = () => insertAtCursor('/'); }
+        // Anpassar knappar beroende på läge
+        const btn1 = document.querySelectorAll('.operator')[2]; // Knappen som var %
+        const btn2 = document.getElementById('op-div'); 
+        
+        if(isAdvanced) { 
+            btn1.innerHTML = 'sin'; btn1.onclick = () => insertAtCursor('Math.sin('); 
+            btn2.innerHTML = 'cos'; btn2.onclick = () => insertAtCursor('Math.cos('); 
+        } else { 
+            btn1.innerHTML = '%'; btn1.onclick = () => insertAtCursor('%'); 
+            btn2.innerHTML = '÷'; btn2.onclick = () => insertAtCursor('/'); 
+        }
     }
 
     window.onload = () => { 
