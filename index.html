@@ -22,8 +22,12 @@
             --text-muted: #94a3b8;
         }
 
-        * { color: var(--text-color); font-family: Arial, sans-serif; box-sizing: border-box; }
-        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-color); overflow: hidden; }
+        /* NYTT: -webkit-tap-highlight-color tar bort den fula grå rutan som blinkar när man trycker på mobilen */
+        * { color: var(--text-color); font-family: Arial, sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        /* NYTT: touch-action: manipulation tar bort 300ms-fördröjningen vid tryck */
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-color); overflow: hidden; touch-action: manipulation; }
+        
         .calculator { display: flex; flex-direction: column; height: 100%; width: 100%; }
         
         .top-bar { display: flex; gap: 5px; padding: 10px; background: var(--panel-bg); border-bottom: 1px solid rgba(255,255,255,0.1); }
@@ -35,7 +39,13 @@
         .result-preview { text-align: right; color: var(--accent) !important; opacity: 0.7; font-size: 1.4rem; min-height: 1.6rem; margin-top: 5px; }
 
         .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: var(--bg-color); flex: 2.5; }
-        button { border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
+        
+        /* NYTT: user-select: none hindrar telefonen från att tro att du vill markera texten på knappen när du trycker snabbt */
+        button { 
+            border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+            user-select: none; -webkit-user-select: none; touch-action: manipulation;
+        }
         button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
         
         .num-btn { background: var(--btn-num); } 
@@ -136,7 +146,7 @@
         <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
     </div>
 
-    <div class="version-text">V 4.3 (Procent och tangentbord fixat)</div>
+    <div class="version-text">V 4.4 (Snabba och responsiva knappar)</div>
 </div>
 
 <div class="panel" id="histPanel">
@@ -254,11 +264,9 @@
         let parsed = str.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
 
         // Avancerad procenträkning: 
-        // Den här koden söker efter mönster som "nummer + nummer%" eller "nummer * nummer%"
-        // och gör om dem så att Javascript förstår. Tex: "100-15%" blir "100-(100*15/100)"
         parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*([\+\-])\s*(\d+(?:\.\d+)?)\s*%/g, "($1 $2 ($1 * ($3 / 100)))");
         
-        // Tar hand om enkla procent som "50%" (när det inte föregås av + eller -)
+        // Tar hand om enkla procent som "50%"
         parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*%/g, "($1 / 100)");
 
         return parsed;
