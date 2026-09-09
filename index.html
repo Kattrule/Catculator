@@ -22,10 +22,8 @@
             --text-muted: #94a3b8;
         }
 
-        /* NYTT: -webkit-tap-highlight-color tar bort den fula grå rutan som blinkar när man trycker på mobilen */
         * { color: var(--text-color); font-family: Arial, sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        /* NYTT: touch-action: manipulation tar bort 300ms-fördröjningen vid tryck */
         body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-color); overflow: hidden; touch-action: manipulation; }
         
         .calculator { display: flex; flex-direction: column; height: 100%; width: 100%; }
@@ -40,7 +38,6 @@
 
         .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: var(--bg-color); flex: 2.5; }
         
-        /* NYTT: user-select: none hindrar telefonen från att tro att du vill markera texten på knappen när du trycker snabbt */
         button { 
             border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; 
             transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.3);
@@ -73,7 +70,8 @@
         .color-swatch { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: 0.2s; }
 
         .custom-item { background: var(--panel-bg); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
-        .del-btn { background: #ef4444; color: white !important; font-size: 1rem; padding: 10px; border-radius: 6px; }
+        .del-btn { background: #ef4444; color: white !important; font-size: 0.9rem; padding: 10px; border-radius: 6px; }
+        .edit-btn { background: var(--accent); color: var(--bg-color) !important; font-size: 0.9rem; padding: 10px; border-radius: 6px; font-weight: bold; }
 
         .version-text { text-align: center; font-size: 0.75rem; color: var(--text-muted); padding: 5px; background: var(--bg-color); margin-top: auto; }
     </style>
@@ -95,27 +93,27 @@
 
     <div class="keys" id="mainKeys">
         <button class="clear-btn" onclick="clearDisplay()">C</button>
-        <button class="operator" onclick="insertSmartParenthesis()">( )</button>
-        <button class="operator" onclick="insertAtCursor('%')">%</button>
+        <button id="op-paren" class="operator" onclick="insertSmartParenthesis()">( )</button>
+        <button id="op-perc" class="operator" onclick="insertAtCursor('%')">%</button>
         <button id="op-div" class="operator" onclick="insertAtCursor('/')">÷</button>
         
-        <button class="num-btn" onclick="insertAtCursor('7')">7</button>
-        <button class="num-btn" onclick="insertAtCursor('8')">8</button>
-        <button class="num-btn" onclick="insertAtCursor('9')">9</button>
+        <button class="num-btn digit-btn" data-num="7">7</button>
+        <button class="num-btn digit-btn" data-num="8">8</button>
+        <button class="num-btn digit-btn" data-num="9">9</button>
         <button id="op-mult" class="operator" onclick="insertAtCursor('*')">×</button>
         
-        <button class="num-btn" onclick="insertAtCursor('4')">4</button>
-        <button class="num-btn" onclick="insertAtCursor('5')">5</button>
-        <button class="num-btn" onclick="insertAtCursor('6')">6</button>
+        <button class="num-btn digit-btn" data-num="4">4</button>
+        <button class="num-btn digit-btn" data-num="5">5</button>
+        <button class="num-btn digit-btn" data-num="6">6</button>
         <button id="op-sub" class="operator" onclick="insertAtCursor('-')">-</button>
         
-        <button class="num-btn" onclick="insertAtCursor('1')">1</button>
-        <button class="num-btn" onclick="insertAtCursor('2')">2</button>
-        <button class="num-btn" onclick="insertAtCursor('3')">3</button>
+        <button class="num-btn digit-btn" data-num="1">1</button>
+        <button class="num-btn digit-btn" data-num="2">2</button>
+        <button class="num-btn digit-btn" data-num="3">3</button>
         <button id="op-add" class="operator" onclick="insertAtCursor('+')">+</button>
         
         <button class="num-btn" onclick="insertAtCursor('.')">.</button>
-        <button class="num-btn" onclick="insertAtCursor('0')">0</button>
+        <button class="num-btn digit-btn" data-num="0">0</button>
         <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
         <button class="equal-btn" onclick="calculate()">=</button>
     </div>
@@ -146,7 +144,7 @@
         <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
     </div>
 
-    <div class="version-text">V 4.4 (Snabba och responsiva knappar)</div>
+    <div class="version-text">V 4.5</div>
 </div>
 
 <div class="panel" id="histPanel">
@@ -258,15 +256,27 @@
         }
     }
 
-    // --- KALKYLATOR LOGIK MED NY PROCENTHANTERING ---
+    // --- KALKYLATOR LOGIK ---
     function parseMathString(str) {
-        // Byter ut standardtecken
         let parsed = str.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
 
-        // Avancerad procenträkning: 
+        // Hanterar upphöjda siffror dynamiskt (t.ex. 5²³ blir 5**(23))
+        const superMap = {'⁰':'0', '¹':'1', '²':'2', '³':'3', '⁴':'4', '⁵':'5', '⁶':'6', '⁷':'7', '⁸':'8', '⁹':'9'};
+        parsed = parsed.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (match) => {
+            let numStr = Array.from(match).map(char => superMap[char]).join('');
+            return '**(' + numStr + ')';
+        });
+
+        // Avancerade funktioner
+        parsed = parsed.replace(/√\(/g, 'Math.sqrt(');
+        parsed = parsed.replace(/\^/g, '**');
+        parsed = parsed.replace(/π/g, 'Math.PI');
+        parsed = parsed.replace(/sin\(/g, 'Math.sin(');
+        parsed = parsed.replace(/cos\(/g, 'Math.cos(');
+        parsed = parsed.replace(/tan\(/g, 'Math.tan(');
+
+        // Avancerad procenträkning
         parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*([\+\-])\s*(\d+(?:\.\d+)?)\s*%/g, "($1 $2 ($1 * ($3 / 100)))");
-        
-        // Tar hand om enkla procent som "50%"
         parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*%/g, "($1 / 100)");
 
         return parsed;
@@ -319,7 +329,7 @@
     // --- TANGENTBORDSHANTERING ---
     input.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
-            event.preventDefault(); // Förhindra radbrytning etc
+            event.preventDefault(); 
             calculate();
         } else if (event.key === 'Escape' || event.key === 'Delete') {
              event.preventDefault();
@@ -327,13 +337,44 @@
         } else if (event.key === 'Backspace') {
              event.preventDefault();
              deleteAtCursor();
-        } else if (['1','2','3','4','5','6','7','8','9','0','.','+','-','*','/','%','(',')'].includes(event.key)) {
+        } else if (['1','2','3','4','5','6','7','8','9','0','.','+','-','*','/','%','(',')','^'].includes(event.key)) {
              event.preventDefault();
              let keyToInsert = event.key;
              if (keyToInsert === '*') keyToInsert = '×';
              if (keyToInsert === '/') keyToInsert = '÷';
              insertAtCursor(keyToInsert);
         }
+    });
+
+    // --- LONG PRESS FUNKTIONALITET (Siffror blir upphöjda) ---
+    const superscriptMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+    
+    document.querySelectorAll('.digit-btn').forEach(btn => {
+        let pressTimer;
+        let isLongPress = false;
+        let isCancelled = false;
+        
+        btn.addEventListener('contextmenu', e => e.preventDefault()); // Stoppar högerklick/långtrycks-meny
+        
+        btn.addEventListener('pointerdown', (e) => {
+            isLongPress = false;
+            isCancelled = false;
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                insertAtCursor(superscriptMap[btn.getAttribute('data-num')]);
+                if (navigator.vibrate) navigator.vibrate(50);
+            }, 400); // 400 millisekunder för long-press
+        });
+        
+        btn.addEventListener('pointerup', (e) => {
+            clearTimeout(pressTimer);
+            if (!isLongPress && !isCancelled) {
+                insertAtCursor(btn.getAttribute('data-num'));
+            }
+        });
+        
+        btn.addEventListener('pointerleave', () => { clearTimeout(pressTimer); isCancelled = true; });
+        btn.addEventListener('pointercancel', () => { clearTimeout(pressTimer); isCancelled = true; });
     });
 
     // --- KONVERTERARE & DYNAMISKA FORMLER ---
@@ -494,17 +535,33 @@
     function saveCustomFormula() {
         const name = document.getElementById('customName').value.trim();
         const formula = document.getElementById('customMath').value.trim();
-        if(!name || !formula || !formula.includes("?")) return alert("Fyll i namn och en formel med minst ett frågetecken (?)");
+        if(!name || !formula) return alert("Fyll i både namn och formel!");
+        
         customFormulas[name] = formula;
         localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas));
-        document.getElementById('customName').value = ''; document.getElementById('customMath').value = '';
-        renderCustomList(); initConv();
+        
+        document.getElementById('customName').value = ''; 
+        document.getElementById('customMath').value = '';
+        renderCustomList(); 
+        initConv();
+    }
+
+    function editCustomFormula(fName) {
+        document.getElementById('customName').value = fName;
+        document.getElementById('customMath').value = customFormulas[fName];
+        document.getElementById('customPanel').scrollTo(0,0); // Rulla upp för att se inmatningsrutorna
     }
 
     function renderCustomList() {
         const list = document.getElementById('customList'); list.innerHTML = "";
         for(let fName in customFormulas) {
-            list.innerHTML += `<div class="custom-item"><div><strong>${fName}</strong><br><small>${customFormulas[fName]}</small></div><button class="del-btn" onclick="deleteCustomFormula('${fName}')">Ta bort</button></div>`;
+            list.innerHTML += `<div class="custom-item">
+                <div><strong>${fName}</strong><br><small>${customFormulas[fName]}</small></div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="edit-btn" onclick="editCustomFormula('${fName}')">Ändra</button>
+                    <button class="del-btn" onclick="deleteCustomFormula('${fName}')">Ta bort</button>
+                </div>
+            </div>`;
         }
     }
 
@@ -546,19 +603,33 @@
         document.getElementById('historyList').innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>';
     }
 
+    // --- AVANCERAT LÄGE ---
     let isAdvanced = false;
     function toggleAdvanced() {
-        isAdvanced = !isAdvanced; document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
-        // Anpassar knappar beroende på läge
-        const btn1 = document.querySelectorAll('.operator')[2]; // Knappen som var %
-        const btn2 = document.getElementById('op-div'); 
+        isAdvanced = !isAdvanced; 
+        document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
         
+        const btnParen = document.getElementById('op-paren');
+        const btnPerc  = document.getElementById('op-perc');
+        const btnDiv   = document.getElementById('op-div');
+        const btnMult  = document.getElementById('op-mult');
+        const btnSub   = document.getElementById('op-sub');
+        const btnAdd   = document.getElementById('op-add');
+
         if(isAdvanced) { 
-            btn1.innerHTML = 'sin'; btn1.onclick = () => insertAtCursor('Math.sin('); 
-            btn2.innerHTML = 'cos'; btn2.onclick = () => insertAtCursor('Math.cos('); 
+            btnParen.innerHTML = 'sin'; btnParen.onclick = () => insertAtCursor('sin('); 
+            btnPerc.innerHTML = 'cos';  btnPerc.onclick = () => insertAtCursor('cos('); 
+            btnDiv.innerHTML = 'tan';   btnDiv.onclick = () => insertAtCursor('tan('); 
+            btnMult.innerHTML = '√';    btnMult.onclick = () => insertAtCursor('√('); 
+            btnSub.innerHTML = '^';     btnSub.onclick = () => insertAtCursor('^'); 
+            btnAdd.innerHTML = 'π';     btnAdd.onclick = () => insertAtCursor('π'); 
         } else { 
-            btn1.innerHTML = '%'; btn1.onclick = () => insertAtCursor('%'); 
-            btn2.innerHTML = '÷'; btn2.onclick = () => insertAtCursor('/'); 
+            btnParen.innerHTML = '( )'; btnParen.onclick = () => insertSmartParenthesis(); 
+            btnPerc.innerHTML = '%';    btnPerc.onclick = () => insertAtCursor('%'); 
+            btnDiv.innerHTML = '÷';     btnDiv.onclick = () => insertAtCursor('/'); 
+            btnMult.innerHTML = '×';    btnMult.onclick = () => insertAtCursor('*'); 
+            btnSub.innerHTML = '-';     btnSub.onclick = () => insertAtCursor('-'); 
+            btnAdd.innerHTML = '+';     btnAdd.onclick = () => insertAtCursor('+'); 
         }
     }
 
