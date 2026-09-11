@@ -45,6 +45,9 @@
         }
         button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
         
+        /* Specifikt för swipe-menyn så skärmen inte rullar */
+        #btn-dot { touch-action: none; }
+
         .num-btn { background: var(--btn-num); } 
         .operator { color: var(--accent) !important; background: var(--btn-op); }
         .clear-btn { color: #ef4444 !important; background: var(--btn-op); }
@@ -97,28 +100,29 @@
         <button id="op-perc" class="operator" onclick="insertAtCursor('%')">%</button>
         <button id="op-div" class="operator" onclick="insertAtCursor('/')">÷</button>
         
-        <button class="num-btn digit-btn" data-num="7">7</button>
+        <button id="btn-7" class="num-btn digit-btn" data-num="7">7</button>
         <button class="num-btn digit-btn" data-num="8">8</button>
         <button class="num-btn digit-btn" data-num="9">9</button>
         <button id="op-mult" class="operator" onclick="insertAtCursor('*')">×</button>
         
-        <button class="num-btn digit-btn" data-num="4">4</button>
+        <button id="btn-4" class="num-btn digit-btn" data-num="4">4</button>
         <button class="num-btn digit-btn" data-num="5">5</button>
         <button class="num-btn digit-btn" data-num="6">6</button>
         <button id="op-sub" class="operator" onclick="insertAtCursor('-')">-</button>
         
-        <button class="num-btn digit-btn" data-num="1">1</button>
+        <button id="btn-1" class="num-btn digit-btn" data-num="1">1</button>
         <button class="num-btn digit-btn" data-num="2">2</button>
         <button class="num-btn digit-btn" data-num="3">3</button>
         <button id="op-add" class="operator" onclick="insertAtCursor('+')">+</button>
         
-        <button class="num-btn" onclick="insertAtCursor('.')">.</button>
+        <button id="btn-dot" class="num-btn">.</button>
         <button class="num-btn digit-btn" data-num="0">0</button>
         <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
         <button class="equal-btn" onclick="calculate()">=</button>
     </div>
 
     <div class="conv-area" id="convArea">
+        <!-- Konverterar-kod gömd här för att spara plats i översikten (Samma som innan) -->
         <div class="conv-row">
             <select id="convFrom" class="conv-select" onchange="updateConvTo()"></select>
             <span style="font-size:1.5rem;">➔</span>
@@ -144,7 +148,7 @@
         <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
     </div>
 
-    <div class="version-text">V 4.5</div>
+    <div class="version-text">V 5.0</div>
 </div>
 
 <div class="panel" id="histPanel">
@@ -153,6 +157,7 @@
 </div>
 
 <div class="panel" id="designPanel">
+    <!-- Design-panel (Samma som innan) -->
     <div class="panel-header"><h2>Design 🎨</h2><button class="top-btn" onclick="togglePanel('designPanel')">Klar</button></div>
     <div class="design-row">
         <span>Välj del:</span>
@@ -178,14 +183,9 @@
 </div>
 
 <div class="panel" id="customPanel">
+    <!-- Egna Formler-panel (Samma som innan) -->
     <div class="panel-header"><h2>Egna Formler</h2><button class="top-btn" onclick="togglePanel('customPanel')">Klar</button></div>
     <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
-        <p style="color: var(--text-muted); font-size: 0.9rem;">
-            Sätt ett <b>?</b> framför ord du vill fylla i, så skapar appen automatiskt inmatningsrutor.<br><br>
-            <b>Kedja formler:</b> Avsluta en formel med <b>&lt;</b> och starta en annan med <b>&gt;</b> för att koppla ihop dem!<br>
-            <i>Exempel 1: 1 + ? / &lt;</i><br>
-            <i>Exempel 2: &gt; 5 * ?</i>
-        </p>
         <input type="text" id="customName" class="conv-input" placeholder="Namn på formeln">
         <input type="text" id="customMath" class="conv-input" placeholder="Formel (t.ex: ?lön - ?skatt)">
         <button class="equal-btn" style="padding: 15px; border-radius: 8px;" onclick="saveCustomFormula()">Spara Formel</button>
@@ -201,17 +201,14 @@
         try {
             let data = localStorage.getItem(key);
             return data ? JSON.parse(data) : defaultVal;
-        } catch(e) {
-            console.warn("Kunde inte läsa " + key + ", återställer till standard.");
-            return defaultVal;
-        }
+        } catch(e) { return defaultVal; }
     }
 
     let historyData = safeLoad('catcalc_history_data', []);
     let recentColors = safeLoad('catcalc_recent', ['#38bdf8', '#10b981', '#ef4444', '#ffffff', '#0f172a', '#1e293b']);
     let customFormulas = safeLoad('catcalc_custom', {});
 
-    // --- DESIGN ---
+    // --- DESIGN LOGIK ---
     const defaultDesign = {"--bg-color":"#0f172a","--panel-bg":"#1e293b","--text-color":"#ffffff","--btn-num":"#475569","--accent":"#38bdf8","--btn-op":"#1e293b","--equal-bg":"#10b981"};
     function syncDesignUI() {
         const target = document.getElementById('designTarget').value;
@@ -244,9 +241,7 @@
     }
     function loadDesign() {
         const d = safeLoad('catcalc_design', null);
-        if(d) {
-            for(let k in d) document.documentElement.style.setProperty(k, d[k]);
-        }
+        if(d) for(let k in d) document.documentElement.style.setProperty(k, d[k]);
     }
     function resetDesign() {
         if(confirm("Nollställ design?")) {
@@ -256,16 +251,21 @@
         }
     }
 
-    // --- KALKYLATOR LOGIK ---
+    // --- KALKYLATOR LOGIK (Nu med tid) ---
     function parseMathString(str) {
         let parsed = str.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
 
-        // Hanterar upphöjda siffror dynamiskt (t.ex. 5²³ blir 5**(23))
+        // Hanterar upphöjda siffror
         const superMap = {'⁰':'0', '¹':'1', '²':'2', '³':'3', '⁴':'4', '⁵':'5', '⁶':'6', '⁷':'7', '⁸':'8', '⁹':'9'};
         parsed = parsed.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (match) => {
             let numStr = Array.from(match).map(char => superMap[char]).join('');
             return '**(' + numStr + ')';
         });
+
+        // Tidsräkning: Omvandlar Timmar(H), Minuter(M), Sekunder(S) till enbart sekunder
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)H/g, "($1 * 3600)");
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)M/g, "($1 * 60)");
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)S/g, "($1 * 1)");
 
         // Avancerade funktioner
         parsed = parsed.replace(/√\(/g, 'Math.sqrt(');
@@ -275,11 +275,28 @@
         parsed = parsed.replace(/cos\(/g, 'Math.cos(');
         parsed = parsed.replace(/tan\(/g, 'Math.tan(');
 
-        // Avancerad procenträkning
+        // Procenträkning
         parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*([\+\-])\s*(\d+(?:\.\d+)?)\s*%/g, "($1 $2 ($1 * ($3 / 100)))");
         parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*%/g, "($1 / 100)");
 
         return parsed;
+    }
+
+    // NYTT: Funktion som formaterar resultatet till Tid (H.M.S) om det behövs
+    function formatResult(res, originalStr) {
+        // Kontrollerar om man matade in t.ex. 2H, 5M eller 30S i formeln
+        if (/[0-9][HMS]/.test(originalStr)) {
+            let isNegative = res < 0;
+            let totalSec = Math.abs(res);
+            let h = Math.floor(totalSec / 3600);
+            let m = Math.floor((totalSec % 3600) / 60);
+            let s = parseFloat((totalSec % 60).toFixed(4));
+            
+            // Bygger strängen i formatet H.MM.SS (t.ex. 2.51.38)
+            let timeStr = `${h}.${m.toString().padStart(2, '0')}.${s.toString().padStart(2, '0')}`;
+            return isNegative ? "-" + timeStr : timeStr;
+        }
+        return parseFloat(res.toFixed(8)).toString();
     }
 
     function insertAtCursor(val) {
@@ -305,20 +322,24 @@
         const close = (before.match(/\)/g) || []).length;
         insertAtCursor(open > close && /[\d\)]/.test(before.trim().slice(-1)) ? ')' : '(');
     }
+    
     function livePreview() {
         try {
             let math = parseMathString(input.value);
             if(!math.trim()) { preview.innerText = ''; return; }
             let res = eval(math);
-            if(res !== undefined && !isNaN(res)) preview.innerText = '= ' + parseFloat(res.toFixed(8));
+            if(res !== undefined && !isNaN(res)) {
+                preview.innerText = '= ' + formatResult(res, input.value);
+            }
         } catch(e) { preview.innerText = ''; }
     }
+    
     function calculate() {
         try {
             if(!input.value) { input.focus(); return; }
             let math = parseMathString(input.value);
             let res = eval(math);
-            let formatted = parseFloat(res.toFixed(8)).toString();
+            let formatted = formatResult(res, input.value);
             saveToHistory(input.value, formatted);
             input.value = formatted;
             preview.innerText = '';
@@ -337,16 +358,16 @@
         } else if (event.key === 'Backspace') {
              event.preventDefault();
              deleteAtCursor();
-        } else if (['1','2','3','4','5','6','7','8','9','0','.','+','-','*','/','%','(',')','^'].includes(event.key)) {
+        } else if (['1','2','3','4','5','6','7','8','9','0','.','+','-','*','/','%','(',')','^','H','M','S','h','m','s'].includes(event.key)) {
              event.preventDefault();
-             let keyToInsert = event.key;
+             let keyToInsert = event.key.toUpperCase(); // H, M, S skrivs in som stor bokstav
              if (keyToInsert === '*') keyToInsert = '×';
              if (keyToInsert === '/') keyToInsert = '÷';
              insertAtCursor(keyToInsert);
         }
     });
 
-    // --- LONG PRESS FUNKTIONALITET (Siffror blir upphöjda) ---
+    // --- UPPHÖJDA SIFFROR (Long press) ---
     const superscriptMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
     
     document.querySelectorAll('.digit-btn').forEach(btn => {
@@ -354,30 +375,107 @@
         let isLongPress = false;
         let isCancelled = false;
         
-        btn.addEventListener('contextmenu', e => e.preventDefault()); // Stoppar högerklick/långtrycks-meny
+        btn.addEventListener('contextmenu', e => e.preventDefault()); 
         
         btn.addEventListener('pointerdown', (e) => {
-            isLongPress = false;
-            isCancelled = false;
+            isLongPress = false; isCancelled = false;
             pressTimer = setTimeout(() => {
                 isLongPress = true;
                 insertAtCursor(superscriptMap[btn.getAttribute('data-num')]);
                 if (navigator.vibrate) navigator.vibrate(50);
-            }, 400); // 400 millisekunder för long-press
+            }, 400); 
         });
         
         btn.addEventListener('pointerup', (e) => {
             clearTimeout(pressTimer);
-            if (!isLongPress && !isCancelled) {
-                insertAtCursor(btn.getAttribute('data-num'));
-            }
+            if (!isLongPress && !isCancelled) insertAtCursor(btn.getAttribute('data-num'));
         });
         
         btn.addEventListener('pointerleave', () => { clearTimeout(pressTimer); isCancelled = true; });
         btn.addEventListener('pointercancel', () => { clearTimeout(pressTimer); isCancelled = true; });
     });
 
-    // --- KONVERTERARE & DYNAMISKA FORMLER ---
+    // --- NYTT: SWIPE-MENY FÖR TID (PÅ PUNKT-KNAPPEN) ---
+    const dotBtn = document.getElementById('btn-dot');
+    const btn1 = document.getElementById('btn-1');
+    const btn4 = document.getElementById('btn-4');
+    const btn7 = document.getElementById('btn-7');
+
+    let dotTimer;
+    let isTimeSwipe = false;
+    let activeTimeBtn = null;
+
+    function resetTimeSwipe() {
+        isTimeSwipe = false;
+        btn1.innerText = "1"; btn4.innerText = "4"; btn7.innerText = "7";
+        [btn1, btn4, btn7].forEach(b => {
+            b.style.backgroundColor = '';
+            b.style.transform = '';
+            b.style.color = ''; // Återställ standardfärg
+        });
+    }
+
+    dotBtn.addEventListener('contextmenu', e => e.preventDefault());
+    
+    dotBtn.addEventListener('pointerdown', (e) => {
+        isTimeSwipe = false;
+        dotBtn.setPointerCapture(e.pointerId); // Håll kvar touchen även om man drar utanför
+        
+        dotTimer = setTimeout(() => {
+            isTimeSwipe = true;
+            if (navigator.vibrate) navigator.vibrate(50);
+            
+            // Ändra utseende på 1, 4, 7 till tid
+            btn1.innerText = "S"; btn1.style.color = "var(--accent)";
+            btn4.innerText = "M"; btn4.style.color = "var(--accent)";
+            btn7.innerText = "H"; btn7.style.color = "var(--accent)";
+        }, 300); // 300ms delay
+    });
+
+    dotBtn.addEventListener('pointermove', (e) => {
+        if(!isTimeSwipe) return;
+        
+        // Hitta vilken knapp fingret är över just nu
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        
+        // Återställ highlights
+        [btn1, btn4, btn7].forEach(b => {
+            b.style.backgroundColor = '';
+            b.style.transform = '';
+        });
+        activeTimeBtn = null;
+
+        // Om fingret är över någon av de 3 knapparna, highlighta den
+        if(el === btn1 || el === btn4 || el === btn7) {
+            el.style.backgroundColor = 'rgba(56, 189, 248, 0.2)'; 
+            el.style.transform = 'scale(1.1)';
+            activeTimeBtn = el;
+        }
+    });
+
+    dotBtn.addEventListener('pointerup', (e) => {
+        clearTimeout(dotTimer);
+        dotBtn.releasePointerCapture(e.pointerId);
+        
+        if (isTimeSwipe) {
+            // Skriv in bokstaven beroende på vilken man släppte fingret över
+            if(activeTimeBtn === btn1) insertAtCursor('S');
+            if(activeTimeBtn === btn4) insertAtCursor('M');
+            if(activeTimeBtn === btn7) insertAtCursor('H');
+            resetTimeSwipe();
+        } else {
+            // Om man bara snabbtryckte på punkten
+            insertAtCursor('.');
+        }
+    });
+
+    dotBtn.addEventListener('pointercancel', () => {
+        clearTimeout(dotTimer);
+        if(isTimeSwipe) resetTimeSwipe();
+    });
+
+
+    // --- KONVERTERARE & PANELER (Samma som innan) ---
     const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
     const unitRates = { "km/h":1, "mph":0.621371, "m/s":0.277778, "cm":1, "tum":0.393701, "meter":0.01 };
     let lastConvResult = "";
@@ -391,231 +489,102 @@
     }
 
     function initConv() {
-        const fromSel = document.getElementById('convFrom');
-        fromSel.innerHTML = "";
+        const fromSel = document.getElementById('convFrom'); fromSel.innerHTML = "";
         for(let u in unitCat) fromSel.add(new Option(u, u));
-        
-        for(let f in customFormulas) {
-            if (!customFormulas[f].trim().startsWith(">")) {
-                fromSel.add(new Option("⚙️ " + f, "custom_" + f));
-            }
-        }
+        for(let f in customFormulas) { if (!customFormulas[f].trim().startsWith(">")) fromSel.add(new Option("⚙️ " + f, "custom_" + f)); }
         updateConvTo();
     }
 
     function updateConvTo() {
-        const fromVal = document.getElementById('convFrom').value;
-        const toSel = document.getElementById('convTo');
-        
-        toSel.innerHTML = "";
-
+        const fromVal = document.getElementById('convFrom').value, toSel = document.getElementById('convTo'); toSel.innerHTML = "";
         if (fromVal.startsWith("custom_")) {
-            const fName = fromVal.replace("custom_", "");
-            let formula1 = customFormulas[fName] || "";
-            
+            const fName = fromVal.replace("custom_", ""); let formula1 = customFormulas[fName] || "";
             toSel.add(new Option("Uträkning", "result"));
-            
             if (formula1.includes("<")) {
                 toSel.disabled = false;
-                for (let f in customFormulas) {
-                    if (customFormulas[f].includes(">")) {
-                        toSel.add(new Option("⚙️ " + f, "customchain_" + f));
-                    }
-                }
-            } else {
-                toSel.disabled = true;
-            }
+                for (let f in customFormulas) if (customFormulas[f].includes(">")) toSel.add(new Option("⚙️ " + f, "customchain_" + f));
+            } else { toSel.disabled = true; }
             buildDynamicInputs();
         } else {
-            toSel.disabled = false;
-            const targetCat = unitCat[fromVal];
+            toSel.disabled = false; const targetCat = unitCat[fromVal];
             for(let u in unitCat) if(unitCat[u] === targetCat && u !== fromVal) toSel.add(new Option(u, u));
             buildDynamicInputs(); 
         }
     }
 
     function buildDynamicInputs() {
-        const fromVal = document.getElementById('convFrom').value;
-        const toVal = document.getElementById('convTo').value;
-        const dynInputs = document.getElementById('dynamicInputs');
-        
+        const fromVal = document.getElementById('convFrom').value, toVal = document.getElementById('convTo').value, dynInputs = document.getElementById('dynamicInputs');
         if (!fromVal.startsWith("custom_")) {
-            if (dynInputs.querySelector('input[data-var]')) {
-                dynInputs.innerHTML = `<input type="number" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
-            } else if (dynInputs.innerHTML === "") {
-                dynInputs.innerHTML = `<input type="number" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
-            }
-            runConv();
-            return;
+            if (dynInputs.querySelector('input[data-var]') || dynInputs.innerHTML === "") dynInputs.innerHTML = `<input type="number" class="conv-input" placeholder="Värde..." oninput="runConv()">`;
+            runConv(); return;
         }
-        
         let formula = customFormulas[fromVal.replace("custom_", "")].replace(/</g, '');
-        
-        if (toVal && toVal.startsWith("customchain_")) {
-            const chainFormula = customFormulas[toVal.replace("customchain_", "")].replace(/</g, '');
-            formula = chainFormula.replace(/>/g, '(' + formula + ')');
-        }
-        
+        if (toVal && toVal.startsWith("customchain_")) formula = customFormulas[toVal.replace("customchain_", "")].replace(/</g, '').replace(/>/g, '(' + formula + ')');
         dynInputs.setAttribute('data-active-formula', formula);
         
-        let existingVals = {};
-        document.querySelectorAll('#dynamicInputs .conv-input').forEach(el => {
-            if (el.getAttribute('data-var')) {
-                existingVals[el.getAttribute('data-var')] = el.value;
-            }
-        });
-        
-        const matches = formula.match(/\?[a-zåäö0-9_]*/gi);
-        dynInputs.innerHTML = "";
-        
+        let existingVals = {}; document.querySelectorAll('#dynamicInputs .conv-input').forEach(el => { if (el.getAttribute('data-var')) existingVals[el.getAttribute('data-var')] = el.value; });
+        const matches = formula.match(/\?[a-zåäö0-9_]*/gi); dynInputs.innerHTML = "";
         if (matches && matches.length > 0) {
-            const uniqueVars = [...new Set(matches)];
-            uniqueVars.forEach((v) => {
-                let displayName = v === '?' ? 'Värde' : v.replace('?', '');
-                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-                let val = existingVals[v] !== undefined ? existingVals[v] : "";
-                dynInputs.innerHTML += `<input type="number" data-var="${v}" class="conv-input" placeholder="${displayName}..." value="${val}" oninput="runConv()">`;
+            [...new Set(matches)].forEach((v) => {
+                let dName = v === '?' ? 'Värde' : v.replace('?', ''); dName = dName.charAt(0).toUpperCase() + dName.slice(1);
+                dynInputs.innerHTML += `<input type="number" data-var="${v}" class="conv-input" placeholder="${dName}..." value="${existingVals[v] !== undefined ? existingVals[v] : ""}" oninput="runConv()">`;
             });
         } else {
-            let val = existingVals["?"] !== undefined ? existingVals["?"] : "";
-            dynInputs.innerHTML = `<input type="number" data-var="?" class="conv-input" placeholder="Värde..." value="${val}" oninput="runConv()">`;
+            dynInputs.innerHTML = `<input type="number" data-var="?" class="conv-input" placeholder="Värde..." value="${existingVals["?"] !== undefined ? existingVals["?"] : ""}" oninput="runConv()">`;
         }
         runConv();
     }
 
     function runConv() {
-        const from = document.getElementById('convFrom').value;
-        const to = document.getElementById('convTo').value;
-        let res = 0;
-
+        const from = document.getElementById('convFrom').value, to = document.getElementById('convTo').value; let res = 0;
         if (from.startsWith("custom_")) {
-            const dynInputs = document.getElementById('dynamicInputs');
-            let formula = dynInputs.getAttribute('data-active-formula');
-            
             try {
-                let mathStr = parseMathString(formula);
+                let mathStr = parseMathString(document.getElementById('dynamicInputs').getAttribute('data-active-formula'));
                 const inputs = document.querySelectorAll('#dynamicInputs .conv-input');
-                
-                let varList = Array.from(inputs).map(el => ({
-                    name: el.getAttribute('data-var'),
-                    val: el.value !== "" ? el.value.replace(',', '.') : '0'
-                })).sort((a, b) => b.name.length - a.name.length);
-
-                varList.forEach(v => {
-                    let safeName = v.name.replace(/\?/g, '\\?'); 
-                    mathStr = mathStr.replace(new RegExp(safeName + '(?![a-zåäö0-9_])', 'gi'), v.val);
-                });
-
-                res = eval(mathStr);
-                if(!isFinite(res) || isNaN(res)) throw new Error();
-            } catch(e) { 
-                document.getElementById('convResBtn').innerText = "Fel i formel!"; 
-                return; 
-            }
+                let varList = Array.from(inputs).map(el => ({ name: el.getAttribute('data-var'), val: el.value !== "" ? el.value.replace(',', '.') : '0' })).sort((a, b) => b.name.length - a.name.length);
+                varList.forEach(v => { mathStr = mathStr.replace(new RegExp(v.name.replace(/\?/g, '\\?') + '(?![a-zåäö0-9_])', 'gi'), v.val); });
+                res = eval(mathStr); if(!isFinite(res) || isNaN(res)) throw new Error();
+            } catch(e) { document.getElementById('convResBtn').innerText = "Fel i formel!"; return; }
         } else {
-            let el = document.querySelector('#dynamicInputs .conv-input');
-            if(!el) return;
-            let rawVal = el.value.replace(',', '.');
-            const v = parseFloat(rawVal);
-            
-            if(isNaN(v) || rawVal === "") { document.getElementById('convResBtn').innerText = "Resultat: 0"; return; }
-            
+            let el = document.querySelector('#dynamicInputs .conv-input'); if(!el) return;
+            const v = parseFloat(el.value.replace(',', '.')); if(isNaN(v) || el.value === "") { document.getElementById('convResBtn').innerText = "Resultat: 0"; return; }
             if(unitCat[from] === "Cirkel") {
                 let r = from==='Radie'?v : from==='Diameter'?v/2 : from==='Omkrets'?v/(2*Math.PI) : Math.sqrt(v/Math.PI);
                 res = to==='Radie'?r : to==='Diameter'?r*2 : to==='Omkrets'?2*Math.PI*r : Math.PI*r*r;
-            } else { 
-                res = (v / unitRates[from]) * unitRates[to]; 
-            }
+            } else { res = (v / unitRates[from]) * unitRates[to]; }
         }
-
-        lastConvResult = parseFloat(res.toFixed(5)).toString();
-        document.getElementById('convResBtn').innerText = "Resultat: " + lastConvResult;
+        lastConvResult = parseFloat(res.toFixed(5)).toString(); document.getElementById('convResBtn').innerText = "Resultat: " + lastConvResult;
     }
 
     function saveCustomFormula() {
-        const name = document.getElementById('customName').value.trim();
-        const formula = document.getElementById('customMath').value.trim();
+        const name = document.getElementById('customName').value.trim(), formula = document.getElementById('customMath').value.trim();
         if(!name || !formula) return alert("Fyll i både namn och formel!");
-        
-        customFormulas[name] = formula;
-        localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas));
-        
-        document.getElementById('customName').value = ''; 
-        document.getElementById('customMath').value = '';
-        renderCustomList(); 
-        initConv();
+        customFormulas[name] = formula; localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas));
+        document.getElementById('customName').value = ''; document.getElementById('customMath').value = ''; renderCustomList(); initConv();
     }
-
-    function editCustomFormula(fName) {
-        document.getElementById('customName').value = fName;
-        document.getElementById('customMath').value = customFormulas[fName];
-        document.getElementById('customPanel').scrollTo(0,0); // Rulla upp för att se inmatningsrutorna
-    }
-
+    function editCustomFormula(fName) { document.getElementById('customName').value = fName; document.getElementById('customMath').value = customFormulas[fName]; document.getElementById('customPanel').scrollTo(0,0); }
+    function deleteCustomFormula(fName) { if(confirm(`Ta bort ${fName}?`)) { delete customFormulas[fName]; localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas)); renderCustomList(); initConv(); } }
     function renderCustomList() {
         const list = document.getElementById('customList'); list.innerHTML = "";
-        for(let fName in customFormulas) {
-            list.innerHTML += `<div class="custom-item">
-                <div><strong>${fName}</strong><br><small>${customFormulas[fName]}</small></div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="edit-btn" onclick="editCustomFormula('${fName}')">Ändra</button>
-                    <button class="del-btn" onclick="deleteCustomFormula('${fName}')">Ta bort</button>
-                </div>
-            </div>`;
-        }
+        for(let fName in customFormulas) list.innerHTML += `<div class="custom-item"><div><strong>${fName}</strong><br><small>${customFormulas[fName]}</small></div><div style="display: flex; gap: 8px;"><button class="edit-btn" onclick="editCustomFormula('${fName}')">Ändra</button><button class="del-btn" onclick="deleteCustomFormula('${fName}')">Ta bort</button></div></div>`;
     }
-
-    function deleteCustomFormula(fName) {
-        if(confirm(`Ta bort formeln ${fName}?`)) { delete customFormulas[fName]; localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas)); renderCustomList(); initConv(); }
-    }
-
-    function grabFromDisplay() { 
-        try { 
-            let res = eval(parseMathString(input.value)); 
-            if(!isNaN(res)) { 
-                let el = document.querySelector('#dynamicInputs .conv-input');
-                if(el) { el.value = res; runConv(); }
-            } 
-        } catch(e) {} 
-    }
-    
+    function grabFromDisplay() { try { let res = eval(parseMathString(input.value)); if(!isNaN(res)) { let el = document.querySelector('#dynamicInputs .conv-input'); if(el) { el.value = res; runConv(); } } } catch(e) {} }
     function pasteConv() { if(lastConvResult) { insertAtCursor(lastConvResult); toggleConverter(); } }
     function pasteAndOp(op) { if(lastConvResult) { insertAtCursor(lastConvResult + op); toggleConverter(); } }
     function pasteAndCalc() { if(lastConvResult) { insertAtCursor(lastConvResult); calculate(); toggleConverter(); } }
 
-    // --- PANELER & HISTORIK ---
     function togglePanel(id) {
         const p = document.getElementById(id); const isOpen = p.style.display === 'flex';
-        document.querySelectorAll('.panel').forEach(el => el.style.display = 'none');
-        p.style.display = isOpen ? 'none' : 'flex';
-        if(id === 'histPanel') renderHistoryUI();
-        if(id === 'designPanel') syncDesignUI();
-        if(id === 'customPanel') renderCustomList();
+        document.querySelectorAll('.panel').forEach(el => el.style.display = 'none'); p.style.display = isOpen ? 'none' : 'flex';
+        if(id === 'histPanel') renderHistoryUI(); if(id === 'designPanel') syncDesignUI(); if(id === 'customPanel') renderCustomList();
     }
+    function saveToHistory(eq, res) { historyData.unshift({ eq, res }); if(historyData.length > 20) historyData.pop(); localStorage.setItem('catcalc_history_data', JSON.stringify(historyData)); }
+    function renderHistoryUI() { document.getElementById('historyList').innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>'; }
 
-    function saveToHistory(eq, res) { 
-        historyData.unshift({ eq, res }); 
-        if(historyData.length > 20) historyData.pop(); 
-        localStorage.setItem('catcalc_history_data', JSON.stringify(historyData)); 
-    }
-    
-    function renderHistoryUI() {
-        document.getElementById('historyList').innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>';
-    }
-
-    // --- AVANCERAT LÄGE ---
     let isAdvanced = false;
     function toggleAdvanced() {
-        isAdvanced = !isAdvanced; 
-        document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
-        
-        const btnParen = document.getElementById('op-paren');
-        const btnPerc  = document.getElementById('op-perc');
-        const btnDiv   = document.getElementById('op-div');
-        const btnMult  = document.getElementById('op-mult');
-        const btnSub   = document.getElementById('op-sub');
-        const btnAdd   = document.getElementById('op-add');
-
+        isAdvanced = !isAdvanced; document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
+        const btnParen = document.getElementById('op-paren'), btnPerc = document.getElementById('op-perc'), btnDiv = document.getElementById('op-div'), btnMult = document.getElementById('op-mult'), btnSub = document.getElementById('op-sub'), btnAdd = document.getElementById('op-add');
         if(isAdvanced) { 
             btnParen.innerHTML = 'sin'; btnParen.onclick = () => insertAtCursor('sin('); 
             btnPerc.innerHTML = 'cos';  btnPerc.onclick = () => insertAtCursor('cos('); 
@@ -633,10 +602,7 @@
         }
     }
 
-    window.onload = () => { 
-        loadDesign(); 
-        input.focus(); 
-    };
+    window.onload = () => { loadDesign(); input.focus(); };
 </script>
 </body>
 </html>
