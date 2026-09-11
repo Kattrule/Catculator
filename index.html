@@ -29,7 +29,7 @@
         .calculator { display: flex; flex-direction: column; height: 100%; width: 100%; }
         
         .top-bar { display: flex; gap: 5px; padding: 10px; background: var(--panel-bg); border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .top-btn { background: rgba(255,255,255,0.1); border: none; color: var(--accent) !important; padding: 10px 5px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; }
+        .top-btn { background: rgba(255,255,255,0.1); border: none; color: var(--accent) !important; padding: 10px 5px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; user-select: none; touch-action: manipulation; }
         .top-btn.active { background: var(--accent); color: var(--bg-color) !important; }
 
         .display-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; background: var(--bg-color); }
@@ -83,7 +83,7 @@
 
 <div class="calculator">
     <div class="top-bar">
-        <button id="advToggleBtn" class="top-btn" onclick="toggleAdvanced()">Avancerat</button>
+        <button id="advToggleBtn" class="top-btn">Avancerat</button>
         <button class="top-btn" onclick="toggleConverter()">🔁</button>
         <button class="top-btn" onclick="togglePanel('histPanel')">📃</button>
         <button class="top-btn" onclick="togglePanel('designPanel')">⚙️</button>
@@ -94,6 +94,7 @@
         <div class="result-preview" id="preview"></div>
     </div>
 
+    <!-- VANLIGT & SNABB-AVANCERAT TANGENTBORD -->
     <div class="keys" id="mainKeys">
         <button class="clear-btn" onclick="clearDisplay()">C</button>
         <button id="op-paren" class="operator" onclick="insertSmartParenthesis()">( )</button>
@@ -121,8 +122,30 @@
         <button class="equal-btn" onclick="calculate()">=</button>
     </div>
 
+    <!-- HELT AVANCERAT TANGENTBORD (Visas när man håller in Avancerat) -->
+    <div class="keys" id="fullAdvKeys" style="display: none;">
+        <button class="operator" onclick="insertAtCursor('sin(')">sin</button>
+        <button class="operator" onclick="insertAtCursor('cos(')">cos</button>
+        <button class="operator" onclick="insertAtCursor('tan(')">tan</button>
+        <button class="operator" onclick="insertAtCursor('log(')">log</button>
+        
+        <button class="operator" onclick="insertAtCursor('ln(')">ln</button>
+        <button class="operator" onclick="insertAtCursor('√(')">√</button>
+        <button class="operator" onclick="insertAtCursor('^')">^</button>
+        <button class="operator" onclick="insertAtCursor('π')">π</button>
+        
+        <button class="operator" onclick="insertAtCursor('e')">e</button>
+        <button class="operator" onclick="insertAtCursor('abs(')">abs</button>
+        <button class="operator" onclick="insertAtCursor('1/')">1/x</button>
+        <button class="operator" onclick="insertAtCursor('²')">x²</button>
+        
+        <button class="operator" onclick="insertAtCursor('!')">!</button>
+        <button class="operator" onclick="insertSmartParenthesis()">( )</button>
+        <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
+        <button class="equal-btn" onclick="calculate()">=</button>
+    </div>
+
     <div class="conv-area" id="convArea">
-        <!-- Konverterar-kod gömd här för att spara plats i översikten (Samma som innan) -->
         <div class="conv-row">
             <select id="convFrom" class="conv-select" onchange="updateConvTo()"></select>
             <span style="font-size:1.5rem;">➔</span>
@@ -148,7 +171,7 @@
         <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
     </div>
 
-    <div class="version-text">V 5.0</div>
+    <div class="version-text">V 5.1</div>
 </div>
 
 <div class="panel" id="histPanel">
@@ -157,7 +180,6 @@
 </div>
 
 <div class="panel" id="designPanel">
-    <!-- Design-panel (Samma som innan) -->
     <div class="panel-header"><h2>Design 🎨</h2><button class="top-btn" onclick="togglePanel('designPanel')">Klar</button></div>
     <div class="design-row">
         <span>Välj del:</span>
@@ -183,7 +205,6 @@
 </div>
 
 <div class="panel" id="customPanel">
-    <!-- Egna Formler-panel (Samma som innan) -->
     <div class="panel-header"><h2>Egna Formler</h2><button class="top-btn" onclick="togglePanel('customPanel')">Klar</button></div>
     <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
         <input type="text" id="customName" class="conv-input" placeholder="Namn på formeln">
@@ -251,7 +272,17 @@
         }
     }
 
-    // --- KALKYLATOR LOGIK (Nu med tid) ---
+    // --- Hjälpfunktion för Fakultet (!) ---
+    function fact(n) {
+        n = Number(n);
+        if (isNaN(n) || n < 0) return NaN;
+        if (n === 0 || n === 1) return 1;
+        let res = 1;
+        for (let i = 2; i <= n; i++) res *= i;
+        return res;
+    }
+
+    // --- KALKYLATOR LOGIK (Tid, Millisekunder, Avancerat) ---
     function parseMathString(str) {
         let parsed = str.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
 
@@ -262,10 +293,11 @@
             return '**(' + numStr + ')';
         });
 
-        // Tidsräkning: Omvandlar Timmar(H), Minuter(M), Sekunder(S) till enbart sekunder
-        parsed = parsed.replace(/(\d+(?:\.\d+)?)H/g, "($1 * 3600)");
-        parsed = parsed.replace(/(\d+(?:\.\d+)?)M/g, "($1 * 60)");
-        parsed = parsed.replace(/(\d+(?:\.\d+)?)S/g, "($1 * 1)");
+        // Tidsräkning: Omvandlar H, M, S och MS (Millisekunder) till enbart sekunder
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)MS/gi, "($1 * 0.001)");
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)H/gi, "($1 * 3600)");
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)M/gi, "($1 * 60)");
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)S/gi, "($1 * 1)");
 
         // Avancerade funktioner
         parsed = parsed.replace(/√\(/g, 'Math.sqrt(');
@@ -274,6 +306,11 @@
         parsed = parsed.replace(/sin\(/g, 'Math.sin(');
         parsed = parsed.replace(/cos\(/g, 'Math.cos(');
         parsed = parsed.replace(/tan\(/g, 'Math.tan(');
+        parsed = parsed.replace(/log\(/g, 'Math.log10(');
+        parsed = parsed.replace(/ln\(/g, 'Math.log(');
+        parsed = parsed.replace(/abs\(/g, 'Math.abs(');
+        parsed = parsed.replace(/\be\b/g, 'Math.E');
+        parsed = parsed.replace(/(\d+(?:\.\d+)?)!/g, "fact($1)");
 
         // Procenträkning
         parsed = parsed.replace(/(\d+(?:\.\d+)?)\s*([\+\-])\s*(\d+(?:\.\d+)?)\s*%/g, "($1 $2 ($1 * ($3 / 100)))");
@@ -282,18 +319,20 @@
         return parsed;
     }
 
-    // NYTT: Funktion som formaterar resultatet till Tid (H.M.S) om det behövs
+    // Formaterar resultatet till Tid (H.M.S.MS) om tidsenheter användes
     function formatResult(res, originalStr) {
-        // Kontrollerar om man matade in t.ex. 2H, 5M eller 30S i formeln
-        if (/[0-9][HMS]/.test(originalStr)) {
+        if (/[0-9](MS|[HMS])/i.test(originalStr)) {
             let isNegative = res < 0;
             let totalSec = Math.abs(res);
             let h = Math.floor(totalSec / 3600);
             let m = Math.floor((totalSec % 3600) / 60);
-            let s = parseFloat((totalSec % 60).toFixed(4));
+            let s = Math.floor(totalSec % 60);
+            let ms = Math.round((totalSec - Math.floor(totalSec)) * 1000);
             
-            // Bygger strängen i formatet H.MM.SS (t.ex. 2.51.38)
             let timeStr = `${h}.${m.toString().padStart(2, '0')}.${s.toString().padStart(2, '0')}`;
+            if (ms > 0 || /MS/i.test(originalStr)) {
+                timeStr += `.${ms.toString().padStart(3, '0')}`;
+            }
             return isNegative ? "-" + timeStr : timeStr;
         }
         return parseFloat(res.toFixed(8)).toString();
@@ -360,7 +399,7 @@
              deleteAtCursor();
         } else if (['1','2','3','4','5','6','7','8','9','0','.','+','-','*','/','%','(',')','^','H','M','S','h','m','s'].includes(event.key)) {
              event.preventDefault();
-             let keyToInsert = event.key.toUpperCase(); // H, M, S skrivs in som stor bokstav
+             let keyToInsert = event.key.toUpperCase();
              if (keyToInsert === '*') keyToInsert = '×';
              if (keyToInsert === '/') keyToInsert = '÷';
              insertAtCursor(keyToInsert);
@@ -395,7 +434,7 @@
         btn.addEventListener('pointercancel', () => { clearTimeout(pressTimer); isCancelled = true; });
     });
 
-    // --- NYTT: SWIPE-MENY FÖR TID (PÅ PUNKT-KNAPPEN) ---
+    // --- SWIPE-MENY FÖR TID (PÅ PUNKT-KNAPPEN) ---
     const dotBtn = document.getElementById('btn-dot');
     const btn1 = document.getElementById('btn-1');
     const btn4 = document.getElementById('btn-4');
@@ -411,7 +450,7 @@
         [btn1, btn4, btn7].forEach(b => {
             b.style.backgroundColor = '';
             b.style.transform = '';
-            b.style.color = ''; // Återställ standardfärg
+            b.style.color = '';
         });
     }
 
@@ -419,33 +458,29 @@
     
     dotBtn.addEventListener('pointerdown', (e) => {
         isTimeSwipe = false;
-        dotBtn.setPointerCapture(e.pointerId); // Håll kvar touchen även om man drar utanför
+        dotBtn.setPointerCapture(e.pointerId);
         
         dotTimer = setTimeout(() => {
             isTimeSwipe = true;
             if (navigator.vibrate) navigator.vibrate(50);
             
-            // Ändra utseende på 1, 4, 7 till tid
             btn1.innerText = "S"; btn1.style.color = "var(--accent)";
             btn4.innerText = "M"; btn4.style.color = "var(--accent)";
             btn7.innerText = "H"; btn7.style.color = "var(--accent)";
-        }, 300); // 300ms delay
+        }, 300);
     });
 
     dotBtn.addEventListener('pointermove', (e) => {
         if(!isTimeSwipe) return;
         
-        // Hitta vilken knapp fingret är över just nu
         const el = document.elementFromPoint(e.clientX, e.clientY);
         
-        // Återställ highlights
         [btn1, btn4, btn7].forEach(b => {
             b.style.backgroundColor = '';
             b.style.transform = '';
         });
         activeTimeBtn = null;
 
-        // Om fingret är över någon av de 3 knapparna, highlighta den
         if(el === btn1 || el === btn4 || el === btn7) {
             el.style.backgroundColor = 'rgba(56, 189, 248, 0.2)'; 
             el.style.transform = 'scale(1.1)';
@@ -458,13 +493,11 @@
         dotBtn.releasePointerCapture(e.pointerId);
         
         if (isTimeSwipe) {
-            // Skriv in bokstaven beroende på vilken man släppte fingret över
             if(activeTimeBtn === btn1) insertAtCursor('S');
             if(activeTimeBtn === btn4) insertAtCursor('M');
             if(activeTimeBtn === btn7) insertAtCursor('H');
             resetTimeSwipe();
         } else {
-            // Om man bara snabbtryckte på punkten
             insertAtCursor('.');
         }
     });
@@ -475,17 +508,113 @@
     });
 
 
-    // --- KONVERTERARE & PANELER (Samma som innan) ---
+    // --- AVANCERAT-KNAPPEN (Kort- & Långtryck för hela tangentbordet) ---
+    const advBtn = document.getElementById('advToggleBtn');
+    let advTimer = null;
+    let advLongPressed = false;
+    let advMode = 0; // 0: Normalt, 1: Snabb-Avancerat, 2: Helt Avancerat
+
+    advBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+    advBtn.addEventListener('pointerdown', (e) => {
+        advLongPressed = false;
+        advTimer = setTimeout(() => {
+            advLongPressed = true;
+            if (navigator.vibrate) navigator.vibrate(50);
+            setAdvMode(advMode === 2 ? 0 : 2); // Växla mellan Full Avancerat och Normalt vid långtryck
+        }, 400);
+    });
+
+    advBtn.addEventListener('pointerup', (e) => {
+        clearTimeout(advTimer);
+        if (!advLongPressed) {
+            // Kort tryck
+            if (advMode === 2) {
+                setAdvMode(0);
+            } else {
+                setAdvMode(advMode === 1 ? 0 : 1);
+            }
+        }
+    });
+
+    advBtn.addEventListener('pointercancel', () => clearTimeout(advTimer));
+    advBtn.addEventListener('pointerleave', () => clearTimeout(advTimer));
+
+    function setAdvMode(mode) {
+        advMode = mode;
+        const mainKeys = document.getElementById('mainKeys');
+        const fullAdvKeys = document.getElementById('fullAdvKeys');
+
+        advBtn.classList.remove('active');
+        advBtn.innerText = "Avancerat";
+
+        if (advMode === 0) {
+            mainKeys.style.display = 'grid';
+            fullAdvKeys.style.display = 'none';
+            updateQuickAdvKeys(false);
+        } else if (advMode === 1) {
+            mainKeys.style.display = 'grid';
+            fullAdvKeys.style.display = 'none';
+            advBtn.classList.add('active');
+            updateQuickAdvKeys(true);
+        } else if (advMode === 2) {
+            mainKeys.style.display = 'none';
+            fullAdvKeys.style.display = 'grid';
+            advBtn.classList.add('active');
+            advBtn.innerText = "Full Adv ★";
+        }
+    }
+
+    function updateQuickAdvKeys(isAdv) {
+        const btnParen = document.getElementById('op-paren');
+        const btnPerc = document.getElementById('op-perc');
+        const btnDiv = document.getElementById('op-div');
+        const btnMult = document.getElementById('op-mult');
+        const btnSub = document.getElementById('op-sub');
+        const btnAdd = document.getElementById('op-add');
+
+        if(isAdv) { 
+            btnParen.innerHTML = 'sin'; btnParen.onclick = () => insertAtCursor('sin('); 
+            btnPerc.innerHTML = 'cos';  btnPerc.onclick = () => insertAtCursor('cos('); 
+            btnDiv.innerHTML = 'tan';   btnDiv.onclick = () => insertAtCursor('tan('); 
+            btnMult.innerHTML = '√';    btnMult.onclick = () => insertAtCursor('√('); 
+            btnSub.innerHTML = '^';     btnSub.onclick = () => insertAtCursor('^'); 
+            btnAdd.innerHTML = 'π';     btnAdd.onclick = () => insertAtCursor('π'); 
+        } else { 
+            btnParen.innerHTML = '( )'; btnParen.onclick = () => insertSmartParenthesis(); 
+            btnPerc.innerHTML = '%';    btnPerc.onclick = () => insertAtCursor('%'); 
+            btnDiv.innerHTML = '÷';     btnDiv.onclick = () => insertAtCursor('/'); 
+            btnMult.innerHTML = '×';    btnMult.onclick = () => insertAtCursor('*'); 
+            btnSub.innerHTML = '-';     btnSub.onclick = () => insertAtCursor('-'); 
+            btnAdd.innerHTML = '+';     btnAdd.onclick = () => insertAtCursor('+'); 
+        }
+    }
+
+
+    // --- KONVERTERARE & PANELER ---
     const unitCat = { "km/h":"Hastighet","mph":"Hastighet","m/s":"Hastighet","cm":"Längd","tum":"Längd","meter":"Längd","Radie":"Cirkel","Diameter":"Cirkel","Omkrets":"Cirkel","Area":"Cirkel" };
     const unitRates = { "km/h":1, "mph":0.621371, "m/s":0.277778, "cm":1, "tum":0.393701, "meter":0.01 };
     let lastConvResult = "";
 
     function toggleConverter() {
-        const keys = document.getElementById('mainKeys'), conv = document.getElementById('convArea');
+        const mainKeys = document.getElementById('mainKeys');
+        const fullAdvKeys = document.getElementById('fullAdvKeys');
+        const conv = document.getElementById('convArea');
         const isOpening = conv.style.display !== 'flex';
-        keys.style.display = isOpening ? 'none' : 'grid';
-        conv.style.display = isOpening ? 'flex' : 'none';
-        if(isOpening) initConv();
+
+        if (isOpening) {
+            mainKeys.style.display = 'none';
+            fullAdvKeys.style.display = 'none';
+            conv.style.display = 'flex';
+            initConv();
+        } else {
+            conv.style.display = 'none';
+            if (advMode === 2) {
+                fullAdvKeys.style.display = 'grid';
+            } else {
+                mainKeys.style.display = 'grid';
+            }
+        }
     }
 
     function initConv() {
@@ -580,27 +709,6 @@
     }
     function saveToHistory(eq, res) { historyData.unshift({ eq, res }); if(historyData.length > 20) historyData.pop(); localStorage.setItem('catcalc_history_data', JSON.stringify(historyData)); }
     function renderHistoryUI() { document.getElementById('historyList').innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>'; }
-
-    let isAdvanced = false;
-    function toggleAdvanced() {
-        isAdvanced = !isAdvanced; document.getElementById('advToggleBtn').classList.toggle('active', isAdvanced);
-        const btnParen = document.getElementById('op-paren'), btnPerc = document.getElementById('op-perc'), btnDiv = document.getElementById('op-div'), btnMult = document.getElementById('op-mult'), btnSub = document.getElementById('op-sub'), btnAdd = document.getElementById('op-add');
-        if(isAdvanced) { 
-            btnParen.innerHTML = 'sin'; btnParen.onclick = () => insertAtCursor('sin('); 
-            btnPerc.innerHTML = 'cos';  btnPerc.onclick = () => insertAtCursor('cos('); 
-            btnDiv.innerHTML = 'tan';   btnDiv.onclick = () => insertAtCursor('tan('); 
-            btnMult.innerHTML = '√';    btnMult.onclick = () => insertAtCursor('√('); 
-            btnSub.innerHTML = '^';     btnSub.onclick = () => insertAtCursor('^'); 
-            btnAdd.innerHTML = 'π';     btnAdd.onclick = () => insertAtCursor('π'); 
-        } else { 
-            btnParen.innerHTML = '( )'; btnParen.onclick = () => insertSmartParenthesis(); 
-            btnPerc.innerHTML = '%';    btnPerc.onclick = () => insertAtCursor('%'); 
-            btnDiv.innerHTML = '÷';     btnDiv.onclick = () => insertAtCursor('/'); 
-            btnMult.innerHTML = '×';    btnMult.onclick = () => insertAtCursor('*'); 
-            btnSub.innerHTML = '-';     btnSub.onclick = () => insertAtCursor('-'); 
-            btnAdd.innerHTML = '+';     btnAdd.onclick = () => insertAtCursor('+'); 
-        }
-    }
 
     window.onload = () => { loadDesign(); input.focus(); };
 </script>
