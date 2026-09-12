@@ -177,7 +177,7 @@
         <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
     </div>
 
-    <div class="version-text">V 5.2</div>
+    <div class="version-text">V 5.3</div>
 </div>
 
 <!-- HISTORIK -->
@@ -286,12 +286,12 @@
         }
         localStorage.setItem('catcalc_keys_config', JSON.stringify(customKeys));
         updateQuickAdvKeys(advMode === 1);
-        togglePanel('keysPanel'); // Stänger
+        togglePanel('keysPanel'); 
     }
 
     function resetCustomKeys() {
         if(confirm("Vill du återställa alla knappar till standard?")) {
-            customKeys = JSON.parse(JSON.stringify(defaultKeys)); // Deep copy
+            customKeys = JSON.parse(JSON.stringify(defaultKeys)); 
             localStorage.setItem('catcalc_keys_config', JSON.stringify(customKeys));
             buildKeysEditor();
         }
@@ -347,7 +347,6 @@
     function checkEasterEgg() {
         if(input.value === "Hπ*2" && !isCrashing) {
             isCrashing = true;
-            // Ändra färger till rött!
             document.documentElement.style.setProperty('--bg-color', '#aa0000');
             document.documentElement.style.setProperty('--panel-bg', '#ff0000');
             document.documentElement.style.setProperty('--text-color', '#ffffff');
@@ -356,10 +355,8 @@
             document.documentElement.style.setProperty('--accent', '#ffffff');
             document.documentElement.style.setProperty('--equal-bg', '#000000');
             
-            // Vänta några millisekunder... sedan krascha!
             setTimeout(() => {
                 document.body.innerHTML = "<div style='display:flex; height:100vh; background:#000; justify-content:center; align-items:center;'><h1 style='color:red; font-family:monospace;'>FATAL ERROR</h1></div>";
-                // Ladda om appen så att allt blir som vanligt igen
                 setTimeout(() => location.reload(), 1500);
             }, 800);
         }
@@ -384,14 +381,54 @@
     }
     
     function livePreview() {
-        try { let math = parseMathString(input.value); if(!math.trim()) { preview.innerText = ''; return; }
-            let res = eval(math); if(res !== undefined && !isNaN(res)) { preview.innerText = '= ' + formatResult(res, input.value); } } catch(e) { preview.innerText = ''; }
+        try { 
+            // Påskägg: TŸT
+            if (input.value.toLowerCase().trim() === "katt") {
+                preview.innerText = '= TŸT';
+                return;
+            }
+            
+            let math = parseMathString(input.value); 
+            if(!math.trim()) { preview.innerText = ''; return; }
+            let res = eval(math); 
+            
+            if(res !== undefined && !isNaN(res)) { 
+                let formatted = formatResult(res, input.value);
+                // Påskägg: NICE
+                if (res === 69) {
+                    formatted = "NICE";
+                }
+                preview.innerText = '= ' + formatted; 
+            } 
+        } catch(e) { preview.innerText = ''; }
     }
     
     function calculate() {
-        try { if(!input.value) { input.focus(); return; }
-            let math = parseMathString(input.value); let res = eval(math); let formatted = formatResult(res, input.value);
-            saveToHistory(input.value, formatted); input.value = formatted; preview.innerText = ''; input.focus();
+        try { 
+            if(!input.value) { input.focus(); return; }
+            
+            // Påskägg 2: katt
+            if (input.value.toLowerCase().trim() === "katt") {
+                saveToHistory(input.value, "TŸT");
+                input.value = "TŸT";
+                preview.innerText = '';
+                input.focus();
+                return;
+            }
+
+            let math = parseMathString(input.value); 
+            let res = eval(math); 
+            let formatted = formatResult(res, input.value);
+            
+            // Påskägg 1: 69
+            if (res === 69) {
+                formatted = "NICE";
+            }
+            
+            saveToHistory(input.value, formatted); 
+            input.value = formatted; 
+            preview.innerText = ''; 
+            input.focus();
         } catch(e) { preview.innerText = 'Fel'; input.focus(); }
     }
 
