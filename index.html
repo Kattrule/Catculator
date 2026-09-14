@@ -28,19 +28,29 @@
         
         .calculator { display: flex; flex-direction: column; height: 100%; width: 100%; }
         
-        .top-bar { display: flex; gap: 5px; padding: 10px; background: var(--panel-bg); border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .top-btn { background: rgba(255,255,255,0.1); border: none; color: var(--accent) !important; padding: 10px 5px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; user-select: none; touch-action: manipulation; }
+        .top-bar { display: flex; gap: 5px; padding: 10px; background: var(--panel-bg); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 10; }
+        .top-btn { background: rgba(255,255,255,0.1); border: none; color: var(--accent) !important; padding: 10px 5px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; user-select: none; touch-action: manipulation; transition: 0.2s; }
         .top-btn.active { background: var(--accent); color: var(--bg-color) !important; }
 
-        .display-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; background: var(--bg-color); }
+        .display-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; background: var(--bg-color); z-index: 5;}
         .display-main { width: 100%; background: transparent; border: none; font-size: 3rem; text-align: right; outline: none; caret-color: var(--accent); padding: 0; }
         .result-preview { text-align: right; color: var(--accent) !important; opacity: 0.7; font-size: 1.4rem; min-height: 1.6rem; margin-top: 5px; }
 
-        .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: var(--bg-color); flex: 2.5; }
+        /* NYTT: Wrapper för tangentbord och konverterare för att kunna glida sida till sida */
+        .keys-wrapper { position: relative; flex: 2.5; overflow: hidden; display: flex; width: 100%; background: var(--bg-color); }
+        
+        .keys { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: var(--bg-color); 
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s;
+        }
+        
+        #mainKeys { transform: translateX(0); opacity: 1; pointer-events: auto; }
+        #fullAdvKeys { transform: translateX(100%); opacity: 0; pointer-events: none; }
         
         button { 
             border: none; font-size: 1.6rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+            transition: 0.1s transform, 0.1s box-shadow, 0.2s background-color; box-shadow: 0 4px 0 rgba(0,0,0,0.3);
             user-select: none; -webkit-user-select: none; touch-action: manipulation;
         }
         button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
@@ -52,16 +62,35 @@
         .clear-btn { color: #ef4444 !important; background: var(--btn-op); }
         .equal-btn { background: var(--equal-bg); color: #000 !important; font-weight: bold; }
 
-        .conv-area { display: none; flex-direction: column; gap: 15px; padding: 15px; background: var(--bg-color); flex: 2.5; overflow-y: auto; }
+        /* Konverterare animation */
+        .conv-area { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20;
+            display: flex; flex-direction: column; gap: 15px; padding: 15px; background: var(--bg-color); overflow-y: auto; 
+            transform: translateY(100%); opacity: 0; pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s;
+        }
+        
         .conv-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
         .conv-input, .conv-select { flex: 1; padding: 15px; font-size: 1.2rem; background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; outline: none; width: 100%; }
         .conv-res-btn { background: var(--equal-bg); color: #000 !important; padding: 20px; text-align: center; border-radius: 10px; font-size: 1.4rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
         .conv-op-btn { background: var(--btn-op); color: var(--accent) !important; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; height: 50px; flex: 1; }
         .fetch-btn { background: var(--accent); color: var(--bg-color) !important; font-size: 1rem; padding: 15px; flex: 0.8; border: none; border-radius: 8px; font-weight: bold; align-self: flex-start; }
 
-        .panel { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 100; flex-direction: column; }
-        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--panel-bg); }
+        /* NYTT: Panel animationer in från botten och toppen */
+        .panel { 
+            display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: 100; flex-direction: column; 
+            visibility: hidden; pointer-events: none; background: transparent; 
+            transition: background 0.4s, visibility 0.4s; 
+        }
+        .panel.show { visibility: visible; pointer-events: auto; background: var(--bg-color); }
         
+        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--panel-bg); transform: translateY(-100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; }
+        .panel.show .panel-header { transform: translateY(0); }
+        
+        .panel-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); background: var(--bg-color); z-index: 1; }
+        .panel.show .panel-content { transform: translateY(0); }
+
         .design-row { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 12px; }
         .design-ui-group { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; }
         .design-select { flex: 1; padding: 12px; background: var(--panel-bg); border-radius: 8px; border: 1px solid var(--accent); font-size: 1rem; }
@@ -80,6 +109,14 @@
         .key-edit-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .key-edit-row input { flex: 1; padding: 10px; border-radius: 6px; border: none; background: rgba(255,255,255,0.1); color: var(--text-color); }
         .key-edit-title { margin: 15px 0 5px 0; font-weight: bold; color: var(--accent); }
+        
+        /* Animation för knapp-vändning */
+        @keyframes flipX {
+            0% { transform: rotateX(0deg); }
+            50% { transform: rotateX(90deg); opacity: 0.5; }
+            100% { transform: rotateX(0deg); opacity: 1; }
+        }
+        .flip-animate { animation: flipX 0.3s ease; }
     </style>
 </head>
 <body>
@@ -97,134 +134,141 @@
         <div class="result-preview" id="preview"></div>
     </div>
 
-    <!-- VANLIGT & SNABB-AVANCERAT TANGENTBORD -->
-    <div class="keys" id="mainKeys">
-        <button class="clear-btn" onclick="clearDisplay()">C</button>
-        <button id="op-paren" class="operator">( )</button>
-        <button id="op-perc" class="operator">%</button>
-        <button id="op-div" class="operator">÷</button>
-        
-        <button id="btn-7" class="num-btn digit-btn" data-num="7">7</button>
-        <button class="num-btn digit-btn" data-num="8">8</button>
-        <button class="num-btn digit-btn" data-num="9">9</button>
-        <button id="op-mult" class="operator">×</button>
-        
-        <button id="btn-4" class="num-btn digit-btn" data-num="4">4</button>
-        <button class="num-btn digit-btn" data-num="5">5</button>
-        <button class="num-btn digit-btn" data-num="6">6</button>
-        <button id="op-sub" class="operator">-</button>
-        
-        <button id="btn-1" class="num-btn digit-btn" data-num="1">1</button>
-        <button class="num-btn digit-btn" data-num="2">2</button>
-        <button class="num-btn digit-btn" data-num="3">3</button>
-        <button id="op-add" class="operator">+</button>
-        
-        <button id="btn-dot" class="num-btn">.</button>
-        <button class="num-btn digit-btn" data-num="0">0</button>
-        <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
-        <button class="equal-btn" onclick="calculate()">=</button>
+    <!-- WRAPPER FÖR GLIDANDE LAYOUT -->
+    <div class="keys-wrapper">
+        <!-- VANLIGT & SNABB-AVANCERAT TANGENTBORD -->
+        <div class="keys" id="mainKeys">
+            <button class="clear-btn" onclick="clearDisplay()">C</button>
+            <button id="op-paren" class="operator">( )</button>
+            <button id="op-perc" class="operator">%</button>
+            <button id="op-div" class="operator">÷</button>
+            
+            <button id="btn-7" class="num-btn digit-btn" data-num="7">7</button>
+            <button class="num-btn digit-btn" data-num="8">8</button>
+            <button class="num-btn digit-btn" data-num="9">9</button>
+            <button id="op-mult" class="operator">×</button>
+            
+            <button id="btn-4" class="num-btn digit-btn" data-num="4">4</button>
+            <button class="num-btn digit-btn" data-num="5">5</button>
+            <button class="num-btn digit-btn" data-num="6">6</button>
+            <button id="op-sub" class="operator">-</button>
+            
+            <button id="btn-1" class="num-btn digit-btn" data-num="1">1</button>
+            <button class="num-btn digit-btn" data-num="2">2</button>
+            <button class="num-btn digit-btn" data-num="3">3</button>
+            <button id="op-add" class="operator">+</button>
+            
+            <button id="btn-dot" class="num-btn">.</button>
+            <button class="num-btn digit-btn" data-num="0">0</button>
+            <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
+            <button class="equal-btn" onclick="calculate()">=</button>
+        </div>
+
+        <!-- HELT AVANCERAT TANGENTBORD -->
+        <div class="keys" id="fullAdvKeys">
+            <button class="operator" onclick="insertAtCursor('sin(')">sin</button>
+            <button class="operator" onclick="insertAtCursor('cos(')">cos</button>
+            <button class="operator" onclick="insertAtCursor('tan(')">tan</button>
+            <button class="operator" onclick="insertAtCursor('log(')">log</button>
+            
+            <button class="operator" onclick="insertAtCursor('ln(')">ln</button>
+            <button class="operator" onclick="insertAtCursor('√(')">√</button>
+            <button class="operator" onclick="insertAtCursor('^')">^</button>
+            <button class="operator" onclick="insertAtCursor('π')">π</button>
+            
+            <button class="operator" onclick="insertAtCursor('e')">e</button>
+            <button class="operator" onclick="insertAtCursor('abs(')">abs</button>
+            <button class="operator" onclick="insertAtCursor('1/')">1/x</button>
+            <button class="operator" onclick="insertAtCursor('²')">x²</button>
+            
+            <button class="operator" onclick="insertAtCursor('!')">!</button>
+            <button class="operator" onclick="insertSmartParenthesis()">( )</button>
+            <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
+            <button class="equal-btn" onclick="calculate()">=</button>
+        </div>
+
+        <!-- KONVERTERARE -->
+        <div class="conv-area" id="convArea">
+            <div class="conv-row">
+                <select id="convCategory" class="conv-select" onchange="initConvCategory()"></select>
+            </div>
+            <div class="conv-row">
+                <select id="convFrom" class="conv-select" onchange="updateConvTo()"></select>
+                <span style="font-size:1.5rem;">➔</span>
+                <select id="convTo" class="conv-select" onchange="buildDynamicInputs()"></select>
+            </div>
+            
+            <div class="conv-row" style="align-items: flex-start;">
+                <div id="dynamicInputs" style="display: flex; flex-direction: column; gap: 10px; flex: 1;"></div>
+                <button class="fetch-btn" onclick="grabFromDisplay()">Hämta</button>
+            </div>
+
+            <div id="convResBtn" class="conv-res-btn" onclick="pasteConv()">Resultat: 0</div>
+            
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <button class="conv-op-btn" onclick="pasteAndOp('+')">+</button>
+                <button class="conv-op-btn" onclick="pasteAndOp('-')">-</button>
+                <button class="conv-op-btn" onclick="pasteAndOp('*')">×</button>
+                <button class="conv-op-btn" onclick="pasteAndOp('/')">÷</button>
+                <button class="conv-op-btn equal-btn" onclick="pasteAndCalc()">=</button>
+            </div>
+            
+            <button class="top-btn" onclick="togglePanel('customPanel')" style="margin-top:15px; padding:15px; background: rgba(255,255,255,0.05); color: var(--text-color) !important;">+ Skapa egna enheter / formler</button>
+            <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px; flex-shrink: 0;">Stäng</button>
+        </div>
     </div>
-
-    <!-- HELT AVANCERAT TANGENTBORD -->
-    <div class="keys" id="fullAdvKeys" style="display: none;">
-        <button class="operator" onclick="insertAtCursor('sin(')">sin</button>
-        <button class="operator" onclick="insertAtCursor('cos(')">cos</button>
-        <button class="operator" onclick="insertAtCursor('tan(')">tan</button>
-        <button class="operator" onclick="insertAtCursor('log(')">log</button>
-        
-        <button class="operator" onclick="insertAtCursor('ln(')">ln</button>
-        <button class="operator" onclick="insertAtCursor('√(')">√</button>
-        <button class="operator" onclick="insertAtCursor('^')">^</button>
-        <button class="operator" onclick="insertAtCursor('π')">π</button>
-        
-        <button class="operator" onclick="insertAtCursor('e')">e</button>
-        <button class="operator" onclick="insertAtCursor('abs(')">abs</button>
-        <button class="operator" onclick="insertAtCursor('1/')">1/x</button>
-        <button class="operator" onclick="insertAtCursor('²')">x²</button>
-        
-        <button class="operator" onclick="insertAtCursor('!')">!</button>
-        <button class="operator" onclick="insertSmartParenthesis()">( )</button>
-        <button class="num-btn" onclick="deleteAtCursor()">DEL</button>
-        <button class="equal-btn" onclick="calculate()">=</button>
-    </div>
-
-    <!-- KONVERTERARE -->
-    <div class="conv-area" id="convArea">
-        <div class="conv-row">
-            <select id="convCategory" class="conv-select" onchange="initConvCategory()"></select>
-        </div>
-        <div class="conv-row">
-            <select id="convFrom" class="conv-select" onchange="updateConvTo()"></select>
-            <span style="font-size:1.5rem;">➔</span>
-            <select id="convTo" class="conv-select" onchange="buildDynamicInputs()"></select>
-        </div>
-        
-        <div class="conv-row" style="align-items: flex-start;">
-            <div id="dynamicInputs" style="display: flex; flex-direction: column; gap: 10px; flex: 1;"></div>
-            <button class="fetch-btn" onclick="grabFromDisplay()">Hämta</button>
-        </div>
-
-        <div id="convResBtn" class="conv-res-btn" onclick="pasteConv()">Resultat: 0</div>
-        
-        <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <button class="conv-op-btn" onclick="pasteAndOp('+')">+</button>
-            <button class="conv-op-btn" onclick="pasteAndOp('-')">-</button>
-            <button class="conv-op-btn" onclick="pasteAndOp('*')">×</button>
-            <button class="conv-op-btn" onclick="pasteAndOp('/')">÷</button>
-            <button class="conv-op-btn equal-btn" onclick="pasteAndCalc()">=</button>
-        </div>
-        
-        <button class="top-btn" onclick="togglePanel('customPanel')" style="margin-top:15px; padding:15px; background: rgba(255,255,255,0.05); color: var(--text-color) !important;">+ Skapa egna enheter / formler</button>
-        <button class="top-btn" onclick="toggleConverter()" style="margin-top:5px; padding:15px;">Stäng</button>
-    </div>
-
-    <div class="version-text">V 5.4</div>
+    
+    <div class="version-text">V 5.5</div>
 </div>
 
 <!-- HISTORIK -->
 <div class="panel" id="histPanel">
     <div class="panel-header"><h2>Historik</h2><button class="top-btn" onclick="togglePanel('histPanel')">Stäng</button></div>
-    <div id="historyList" style="flex:1; overflow-y:auto; padding:15px;"></div>
+    <div class="panel-content">
+        <div id="historyList" style="flex:1; padding:15px;"></div>
+    </div>
 </div>
 
 <!-- DESIGN & INSTÄLLNINGAR -->
 <div class="panel" id="designPanel">
     <div class="panel-header"><h2>Inställningar & Design 🎨</h2><button class="top-btn" onclick="togglePanel('designPanel')">Klar</button></div>
-    <div class="design-row">
-        <span>Välj del:</span>
-        <select id="designTarget" class="design-select" onchange="syncDesignUI()">
-            <option value="--bg-color">Bakgrund</option>
-            <option value="--panel-bg">Toppmeny</option>
-            <option value="--text-color">All Text</option>
-            <option value="--btn-num">Sifferknappar</option>
-            <option value="--btn-op">Operatörknappar</option>
-            <option value="--accent">Accentfärg</option>
-            <option value="--equal-bg">Lika med (=)</option>
-        </select>
-        <div class="design-ui-group">
-            <input type="color" id="designColor" class="color-input" oninput="updateFromPicker(this.value)">
-            <input type="text" id="designHex" class="hex-input" maxlength="7" oninput="updateFromHex(this.value)">
+    <div class="panel-content">
+        <div class="design-row">
+            <span>Välj del:</span>
+            <select id="designTarget" class="design-select" onchange="syncDesignUI()">
+                <option value="--bg-color">Bakgrund</option>
+                <option value="--panel-bg">Toppmeny</option>
+                <option value="--text-color">All Text</option>
+                <option value="--btn-num">Sifferknappar</option>
+                <option value="--btn-op">Operatörknappar</option>
+                <option value="--accent">Accentfärg</option>
+                <option value="--equal-bg">Lika med (=)</option>
+            </select>
+            <div class="design-ui-group">
+                <input type="color" id="designColor" class="color-input" oninput="updateFromPicker(this.value)">
+                <input type="text" id="designHex" class="hex-input" maxlength="7" oninput="updateFromHex(this.value)">
+            </div>
         </div>
+        <div class="design-row">
+            <span>Senaste färger:</span>
+            <div id="recentColors" class="recent-colors"></div>
+        </div>
+        <div class="design-row">
+            <span>Mått & Formler:</span>
+            <button class="top-btn" style="background:var(--accent); color:var(--bg-color)!important; padding: 15px;" onclick="togglePanel('customPanel')">➕ Skapa egna mått & enheter</button>
+        </div>
+        <div class="design-row">
+            <span>Anpassa de 6 tecken-knapparna:</span>
+            <button class="top-btn" style="background:var(--accent); color:var(--bg-color)!important; padding: 15px;" onclick="togglePanel('keysPanel')">Redigera Knappar</button>
+        </div>
+        <div style="padding:20px;"><button class="top-btn" style="background:#ef4444; color:white !important; width:100%; padding:15px;" onclick="resetDesign()">Återställ Färger</button></div>
     </div>
-    <div class="design-row">
-        <span>Senaste färger:</span>
-        <div id="recentColors" class="recent-colors"></div>
-    </div>
-    <div class="design-row">
-        <span>Mått & Formler:</span>
-        <button class="top-btn" style="background:var(--accent); color:var(--bg-color)!important; padding: 15px;" onclick="togglePanel('customPanel')">➕ Skapa egna mått & enheter</button>
-    </div>
-    <div class="design-row">
-        <span>Anpassa de 6 tecken-knapparna:</span>
-        <button class="top-btn" style="background:var(--accent); color:var(--bg-color)!important; padding: 15px;" onclick="togglePanel('keysPanel')">Redigera Knappar</button>
-    </div>
-    <div style="padding:20px;"><button class="top-btn" style="background:#ef4444; color:white !important; width:100%; padding:15px;" onclick="resetDesign()">Återställ Färger</button></div>
 </div>
 
 <!-- KNAPP-REDAKTERARE -->
 <div class="panel" id="keysPanel">
     <div class="panel-header"><h2>Ändra Knappar</h2><button class="top-btn" onclick="saveKeysAndClose()">Spara & Stäng</button></div>
-    <div style="padding: 15px; overflow-y: auto; flex: 1;">
+    <div class="panel-content" style="padding: 15px;">
         <p style="font-size: 0.9rem; color: var(--text-muted); margin-top:0;">Skriv in vad som ska stå på knappen (Text) och vad som ska matas in i rutan (Värde). "()" betyder smart parentes.</p>
         
         <div class="key-edit-title">Vanligt Läge (Knapp 1 till 6)</div>
@@ -240,7 +284,7 @@
 <!-- EGNA MÅTT & FORMLER -->
 <div class="panel" id="customPanel">
     <div class="panel-header"><h2>Egna Mått & Formler</h2><button class="top-btn" onclick="togglePanel('customPanel')">Klar</button></div>
-    <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
+    <div class="panel-content" style="padding: 20px; gap: 15px;">
         
         <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
             <h3 style="margin: 0; color: var(--accent);">Skapa nytt mått / enhet</h3>
@@ -278,76 +322,32 @@
     let historyData = safeLoad('catcalc_history_data', []);
     let recentColors = safeLoad('catcalc_recent', ['#38bdf8', '#10b981', '#ef4444', '#ffffff', '#0f172a', '#1e293b']);
     let customFormulas = safeLoad('catcalc_custom', {});
-    let customUnits = safeLoad('catcalc_custom_units', {}); // Egna enheter
+    let customUnits = safeLoad('catcalc_custom_units', {});
     
-    // --- BYGG IN ALLA INBYGGDA ENHETER (ÖVER, UNDER, EMELLAN) ---
     const baseUnitRates = {
-        // LÄNGD (Bas = Meter)
         "Längd": {
-            "nm (Nanometer)": 0.000000001,
-            "µm (Mikrometer)": 0.000001,
-            "mm (Millimeter)": 0.001,
-            "cm (Centimeter)": 0.01,
-            "tum / inch": 0.0254,
-            "dm (Decimeter)": 0.1,
-            "fot (feet)": 0.3048,
-            "yard": 0.9144,
-            "meter (m)": 1,
-            "dam (Dekameter)": 10,
-            "hm (Hektometer)": 100,
-            "km (Kilometer)": 1000,
-            "mile (Engelsk mil)": 1609.344,
-            "mil (Svensk mil)": 10000,
-            "Mm (Megameter)": 1000000
+            "nm (Nanometer)": 0.000000001, "µm (Mikrometer)": 0.000001, "mm (Millimeter)": 0.001, "cm (Centimeter)": 0.01,
+            "tum / inch": 0.0254, "dm (Decimeter)": 0.1, "fot (feet)": 0.3048, "yard": 0.9144, "meter (m)": 1,
+            "dam (Dekameter)": 10, "hm (Hektometer)": 100, "km (Kilometer)": 1000, "mile (Engelsk mil)": 1609.344,
+            "mil (Svensk mil)": 10000, "Mm (Megameter)": 1000000
         },
-        // VIKT (Bas = Gram)
         "Vikt": {
-            "ng (Nanogram)": 0.000000001,
-            "µg (Mikrogram)": 0.000001,
-            "mg (Milligram)": 0.001,
-            "gram (g)": 1,
-            "ounce (oz)": 28.349523125,
-            "pound (lbs)": 453.59237,
-            "kg (Kilogram)": 1000,
-            "metriskt ton (t)": 1000000,
-            "ton (US short ton)": 907184.74,
-            "kiloton": 1000000000
+            "ng (Nanogram)": 0.000000001, "µg (Mikrogram)": 0.000001, "mg (Milligram)": 0.001, "gram (g)": 1,
+            "ounce (oz)": 28.349523125, "pound (lbs)": 453.59237, "kg (Kilogram)": 1000,
+            "metriskt ton (t)": 1000000, "ton (US short ton)": 907184.74, "kiloton": 1000000000
         },
-        // KRAFT (Bas = Newton)
         "Kraft": {
-            "µN (Mikronewton)": 0.000001,
-            "mN (Millinewton)": 0.001,
-            "N (Newton)": 1,
-            "kN (Kilonewton)": 1000,
-            "MN (Meganewton)": 1000000,
-            "lbf (Pound-force)": 4.4482216153
+            "µN (Mikronewton)": 0.000001, "mN (Millinewton)": 0.001, "N (Newton)": 1,
+            "kN (Kilonewton)": 1000, "MN (Meganewton)": 1000000, "lbf (Pound-force)": 4.4482216153
         },
-        // VRIDMOMENT (Bas = Newtonmeter)
         "Vridmoment": {
-            "Nmm (Newton-millimeter)": 0.001,
-            "Ncm (Newton-centimeter)": 0.01,
-            "inch lbs (in-lb)": 0.112984829,
-            "fot lbs (ft-lb)": 1.3558179483,
-            "Nm (Newtonmeter)": 1,
-            "kNm (Kilonewtonmeter)": 1000
+            "Nmm (Newton-millimeter)": 0.001, "Ncm (Newton-centimeter)": 0.01, "inch lbs (in-lb)": 0.112984829,
+            "fot lbs (ft-lb)": 1.3558179483, "Nm (Newtonmeter)": 1, "kNm (Kilonewtonmeter)": 1000
         },
-        // HASTIGHET
-        "Hastighet": {
-            "m/s": 0.277778,
-            "km/h": 1,
-            "mph": 1.609344,
-            "knop": 1.852
-        },
-        // CIRKEL
-        "Cirkel": {
-            "Radie": 1,
-            "Diameter": 2,
-            "Omkrets": 6.28318530718,
-            "Area": 3.14159265359
-        }
+        "Hastighet": { "m/s": 0.277778, "km/h": 1, "mph": 1.609344, "knop": 1.852 },
+        "Cirkel": { "Radie": 1, "Diameter": 2, "Omkrets": 6.28318530718, "Area": 3.14159265359 }
     };
 
-    // --- ANPASSNINGSBARA KNAPPAR ---
     const defaultKeys = {
         normal: [ {lbl:'( )', val:'( )'}, {lbl:'%', val:'%'}, {lbl:'÷', val:'/'}, {lbl:'×', val:'*'}, {lbl:'-', val:'-'}, {lbl:'+', val:'+'} ],
         adv: [ {lbl:'sin', val:'sin('}, {lbl:'cos', val:'cos('}, {lbl:'tan', val:'tan('}, {lbl:'√', val:'√('}, {lbl:'^', val:'^'}, {lbl:'π', val:'π'} ]
@@ -389,7 +389,6 @@
         }
     }
 
-    // --- DESIGN LOGIK ---
     const defaultDesign = {"--bg-color":"#0f172a","--panel-bg":"#1e293b","--text-color":"#ffffff","--btn-num":"#475569","--accent":"#38bdf8","--btn-op":"#1e293b","--equal-bg":"#10b981"};
     function syncDesignUI() {
         const target = document.getElementById('designTarget').value;
@@ -412,7 +411,6 @@
         let res = 1; for (let i = 2; i <= n; i++) res *= i; return res;
     }
 
-    // --- KALKYLATOR LOGIK ---
     function parseMathString(str) {
         let parsed = str.replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
         const superMap = {'⁰':'0', '¹':'1', '²':'2', '³':'3', '⁴':'4', '⁵':'5', '⁶':'6', '⁷':'7', '⁸':'8', '⁹':'9'};
@@ -433,7 +431,6 @@
         return parseFloat(res.toFixed(8)).toString();
     }
     
-    // --- EASTER EGG KONTROLL ---
     let isCrashing = false;
     function checkEasterEgg() {
         if(input.value === "Hπ*2" && !isCrashing) {
@@ -529,8 +526,9 @@
     dotBtn.addEventListener('pointerup', (e) => { clearTimeout(dotTimer); dotBtn.releasePointerCapture(e.pointerId); if (isTimeSwipe) { if(activeTimeBtn === btn1) insertAtCursor('S'); if(activeTimeBtn === btn4) insertAtCursor('M'); if(activeTimeBtn === btn7) insertAtCursor('H'); resetTimeSwipe(); } else { insertAtCursor('.'); } });
     dotBtn.addEventListener('pointercancel', () => { clearTimeout(dotTimer); if(isTimeSwipe) resetTimeSwipe(); });
 
-    const advBtn = document.getElementById('advToggleBtn');
     let advTimer = null, advLongPressed = false, advMode = 0;
+    const advBtn = document.getElementById('advToggleBtn');
+    
     advBtn.addEventListener('contextmenu', e => e.preventDefault());
     advBtn.addEventListener('pointerdown', (e) => { advLongPressed = false; advTimer = setTimeout(() => { advLongPressed = true; if (navigator.vibrate) navigator.vibrate(50); setAdvMode(advMode === 2 ? 0 : 2); }, 400); });
     advBtn.addEventListener('pointerup', (e) => { clearTimeout(advTimer); if (!advLongPressed) { if (advMode === 2) { setAdvMode(0); } else { setAdvMode(advMode === 1 ? 0 : 1); } } });
@@ -538,11 +536,40 @@
     advBtn.addEventListener('pointerleave', () => clearTimeout(advTimer));
 
     function setAdvMode(mode) {
-        advMode = mode; const mainKeys = document.getElementById('mainKeys'); const fullAdvKeys = document.getElementById('fullAdvKeys');
+        advMode = mode; 
         advBtn.classList.remove('active'); advBtn.innerText = "Avancerat";
-        if (advMode === 0) { mainKeys.style.display = 'grid'; fullAdvKeys.style.display = 'none'; updateQuickAdvKeys(false); } 
-        else if (advMode === 1) { mainKeys.style.display = 'grid'; fullAdvKeys.style.display = 'none'; advBtn.classList.add('active'); updateQuickAdvKeys(true); } 
-        else if (advMode === 2) { mainKeys.style.display = 'none'; fullAdvKeys.style.display = 'grid'; advBtn.classList.add('active'); advBtn.innerText = "Full Adv ★"; }
+        
+        if (advMode === 0) { 
+            updateQuickAdvKeys(false); 
+        } 
+        else if (advMode === 1) { 
+            advBtn.classList.add('active'); updateQuickAdvKeys(true); 
+        } 
+        else if (advMode === 2) { 
+            advBtn.classList.add('active'); advBtn.innerText = "Full Adv ★"; 
+        }
+        refreshKeyboardVisibility();
+    }
+    
+    function refreshKeyboardVisibility() {
+        const mainKeys = document.getElementById('mainKeys');
+        const fullAdvKeys = document.getElementById('fullAdvKeys');
+        const conv = document.getElementById('convArea');
+        
+        // Om konverteraren är öppen, dölj tangentborden i bakgrunden
+        if (conv.style.pointerEvents === 'auto') {
+            mainKeys.style.opacity = '0'; mainKeys.style.pointerEvents = 'none';
+            fullAdvKeys.style.opacity = '0'; fullAdvKeys.style.pointerEvents = 'none';
+        } else {
+            // Animera tangentborden från sidorna beroende på läge
+            if (advMode === 2) {
+                mainKeys.style.transform = 'translateX(-100%)'; mainKeys.style.opacity = '0'; mainKeys.style.pointerEvents = 'none';
+                fullAdvKeys.style.transform = 'translateX(0)'; fullAdvKeys.style.opacity = '1'; fullAdvKeys.style.pointerEvents = 'auto';
+            } else {
+                mainKeys.style.transform = 'translateX(0)'; mainKeys.style.opacity = '1'; mainKeys.style.pointerEvents = 'auto';
+                fullAdvKeys.style.transform = 'translateX(100%)'; fullAdvKeys.style.opacity = '0'; fullAdvKeys.style.pointerEvents = 'none';
+            }
+        }
     }
 
     function updateQuickAdvKeys(isAdv) {
@@ -552,20 +579,36 @@
             document.getElementById('op-sub'), document.getElementById('op-add')
         ];
         const conf = isAdv ? customKeys.adv : customKeys.normal;
+        
         btns.forEach((btn, i) => {
-            btn.innerHTML = conf[i].lbl;
-            btn.onclick = () => {
-                if(conf[i].val === '( )') insertSmartParenthesis();
-                else insertAtCursor(conf[i].val);
-            };
+            // Trigga 3D-flipp animeringen
+            btn.classList.remove('flip-animate');
+            void btn.offsetWidth; // Force reflow
+            btn.classList.add('flip-animate');
+            
+            // Ändra texten mitt i snurren
+            setTimeout(() => {
+                btn.innerHTML = conf[i].lbl;
+                btn.onclick = () => {
+                    if(conf[i].val === '( )') insertSmartParenthesis();
+                    else insertAtCursor(conf[i].val);
+                };
+            }, 150);
         });
     }
 
-    // --- KONVERTERARE & KATEGORIER ---
     let lastConvResult = "";
     function toggleConverter() {
-        const mainKeys = document.getElementById('mainKeys'); const fullAdvKeys = document.getElementById('fullAdvKeys'); const conv = document.getElementById('convArea'); const isOpening = conv.style.display !== 'flex';
-        if (isOpening) { mainKeys.style.display = 'none'; fullAdvKeys.style.display = 'none'; conv.style.display = 'flex'; initConvCategory(); } else { conv.style.display = 'none'; if (advMode === 2) { fullAdvKeys.style.display = 'grid'; } else { mainKeys.style.display = 'grid'; } }
+        const conv = document.getElementById('convArea'); 
+        const isOpening = conv.style.pointerEvents !== 'auto';
+        
+        if (isOpening) { 
+            conv.style.transform = 'translateY(0)'; conv.style.opacity = '1'; conv.style.pointerEvents = 'auto';
+            initConvCategory(); 
+        } else { 
+            conv.style.transform = 'translateY(100%)'; conv.style.opacity = '0'; conv.style.pointerEvents = 'none';
+        }
+        refreshKeyboardVisibility();
     }
 
     function initConvCategory() {
@@ -581,11 +624,8 @@
     function getActiveRates() {
         const cat = document.getElementById('convCategory').value;
         let rates = Object.assign({}, baseUnitRates[cat] || {});
-        // Lägg till egna enheter för kategorin
         for (let uName in customUnits) {
-            if (customUnits[uName].cat === cat) {
-                rates["⭐ " + uName] = customUnits[uName].rate;
-            }
+            if (customUnits[uName].cat === cat) rates["⭐ " + uName] = customUnits[uName].rate;
         }
         return rates;
     }
@@ -696,7 +736,6 @@
         document.getElementById('convResBtn').innerText = "Resultat: " + lastConvResult;
     }
 
-    // --- SKAPA EGNA ENHETER ---
     function updateBaseUnitLabel() {
         const cat = document.getElementById('unitCategory').value;
         const label = document.getElementById('baseUnitInfo');
@@ -715,23 +754,18 @@
 
         customUnits[name] = { cat: cat, rate: rate };
         localStorage.setItem('catcalc_custom_units', JSON.stringify(customUnits));
-        document.getElementById('unitName').value = '';
-        document.getElementById('unitValue').value = '';
-        renderCustomList();
-        initConvCategory();
-        alert(`Måttet "${name}" har sparats i ${cat}!`);
+        document.getElementById('unitName').value = ''; document.getElementById('unitValue').value = '';
+        renderCustomList(); initConvCategory(); alert(`Måttet "${name}" har sparats i ${cat}!`);
     }
 
     function deleteCustomUnit(uName) {
         if (confirm(`Ta bort måttet "${uName}"?`)) {
             delete customUnits[uName];
             localStorage.setItem('catcalc_custom_units', JSON.stringify(customUnits));
-            renderCustomList();
-            initConvCategory();
+            renderCustomList(); initConvCategory();
         }
     }
 
-    // --- SKAPA EGNA FORMLER ---
     function saveCustomFormula() {
         const name = document.getElementById('customName').value.trim(), formula = document.getElementById('customMath').value.trim();
         if(!name || !formula) return alert("Fyll i både namn och formel!");
@@ -741,19 +775,15 @@
         renderCustomList(); initConvCategory();
     }
 
-    function editCustomFormula(fName) { document.getElementById('customName').value = fName; document.getElementById('customMath').value = customFormulas[fName]; document.getElementById('customPanel').scrollTo(0,0); }
+    function editCustomFormula(fName) { document.getElementById('customName').value = fName; document.getElementById('customMath').value = customFormulas[fName]; togglePanel('customPanel'); }
     function deleteCustomFormula(fName) { if(confirm(`Ta bort ${fName}?`)) { delete customFormulas[fName]; localStorage.setItem('catcalc_custom', JSON.stringify(customFormulas)); renderCustomList(); initConvCategory(); } }
 
     function renderCustomList() {
         const list = document.getElementById('customList');
         list.innerHTML = "";
-        
-        // Rendera egna enheter
         for (let uName in customUnits) {
             list.innerHTML += `<div class="custom-item"><div><strong>⭐ ${uName}</strong> (${customUnits[uName].cat})<br><small>Jämfört med bas: ${customUnits[uName].rate}</small></div><div><button class="del-btn" onclick="deleteCustomUnit('${uName}')">Ta bort</button></div></div>`;
         }
-        
-        // Rendera egna formler
         for(let fName in customFormulas) {
             list.innerHTML += `<div class="custom-item"><div><strong>⚙️ ${fName}</strong><br><small>${customFormulas[fName]}</small></div><div style="display: flex; gap: 8px;"><button class="edit-btn" onclick="editCustomFormula('${fName}')">Ändra</button><button class="del-btn" onclick="deleteCustomFormula('${fName}')">Ta bort</button></div></div>`;
         }
@@ -764,17 +794,50 @@
     function pasteAndOp(op) { if(lastConvResult) { insertAtCursor(lastConvResult + op); toggleConverter(); } }
     function pasteAndCalc() { if(lastConvResult) { insertAtCursor(lastConvResult); calculate(); toggleConverter(); } }
 
+    // --- ANIMERADE PANELER ---
     function togglePanel(id) {
-        const p = document.getElementById(id); const isOpen = p.style.display === 'flex';
-        document.querySelectorAll('.panel').forEach(el => el.style.display = 'none'); p.style.display = isOpen ? 'none' : 'flex';
-        if(id === 'histPanel') renderHistoryUI(); if(id === 'designPanel') syncDesignUI(); if(id === 'customPanel') { renderCustomList(); updateBaseUnitLabel(); }
-        if(id === 'keysPanel') buildKeysEditor();
+        const p = document.getElementById(id); 
+        const isOpen = p.classList.contains('show');
+        
+        // Stäng alla först
+        document.querySelectorAll('.panel').forEach(el => el.classList.remove('show')); 
+        
+        if(!isOpen) { 
+            p.classList.add('show'); 
+            if(id === 'histPanel') renderHistoryUI(); 
+            if(id === 'designPanel') syncDesignUI(); 
+            if(id === 'customPanel') { renderCustomList(); updateBaseUnitLabel(); }
+            if(id === 'keysPanel') buildKeysEditor();
+        }
     }
     
-    function saveToHistory(eq, res) { historyData.unshift({ eq, res }); if(historyData.length > 20) historyData.pop(); localStorage.setItem('catcalc_history_data', JSON.stringify(historyData)); }
-    function renderHistoryUI() { document.getElementById('historyList').innerHTML = historyData.length ? historyData.map(item => `<div style="background:var(--panel-bg); padding:15px; margin-bottom:5px; border-radius:8px; text-align:right;"><div onclick="insertAtCursor('${item.eq}')">${item.eq}</div><div style="color:var(--accent) !important; font-size:1.4rem;" onclick="insertAtCursor('${item.res}')">${item.res}</div></div>`).join('') : '<p style="text-align:center;">Tomt</p>'; }
+    // FÄRDIGSTÄLLD HISTORIK-FUNKTION OCH INITIERING
+    function saveToHistory(eq, res) {
+        historyData.unshift({ eq, res });
+        if (historyData.length > 50) historyData.pop();
+        localStorage.setItem('catcalc_history_data', JSON.stringify(historyData));
+    }
 
-    window.onload = () => { loadDesign(); updateQuickAdvKeys(false); input.focus(); };
+    function renderHistoryUI() {
+        const list = document.getElementById('historyList');
+        if (!historyData.length) { 
+            list.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">Ingen historik än.</p>'; 
+            return; 
+        }
+        list.innerHTML = historyData.map(item => `
+            <div class="custom-item" style="margin-bottom:10px; cursor:pointer; transition:0.2s;" onclick="insertAtCursor('${item.res}'); togglePanel('histPanel');">
+                <div style="color:var(--text-muted); font-size:0.9rem;">${item.eq}</div>
+                <div style="color:var(--accent); font-size:1.4rem; font-weight:bold;">= ${item.res}</div>
+            </div>
+        `).join('');
+    }
+
+    // Ladda in sparad design när appen startar
+    loadDesign();
+    
+    // Säkerställ att tangentbordet ritas korrekt vid uppstart
+    refreshKeyboardVisibility();
+
 </script>
 </body>
 </html>
