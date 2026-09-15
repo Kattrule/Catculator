@@ -20,6 +20,17 @@
             --btn-op: #1e293b;
             --equal-bg: #10b981;
             --text-muted: #94a3b8;
+
+            /* Animeringstider & Motion Blur */
+            --speed-keys: 0.4s;
+            --speed-conv: 0.4s;
+            --speed-panel: 0.4s;
+            --speed-flip: 0.3s;
+
+            --blur-keys: 0px;
+            --blur-conv: 0px;
+            --blur-panel: 0px;
+            --blur-flip: 0px;
         }
 
         * { color: var(--text-color); font-family: Arial, sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -36,13 +47,14 @@
         .display-main { width: 100%; background: transparent; border: none; font-size: 3rem; text-align: right; outline: none; caret-color: var(--accent); padding: 0; }
         .result-preview { text-align: right; color: var(--accent) !important; opacity: 0.7; font-size: 1.4rem; min-height: 1.6rem; margin-top: 5px; }
 
-        /* NYTT: Wrapper för tangentbord och konverterare för att kunna glida sida till sida */
+        /* Wrapper för tangentbord och konverterare */
         .keys-wrapper { position: relative; flex: 2.5; overflow: hidden; display: flex; width: 100%; background: var(--bg-color); }
         
         .keys { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; background: var(--bg-color); 
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s;
+            /* Uppdaterad transition för att bluren ska ta halva tiden på sig att peaka */
+            transition: transform var(--speed-keys) cubic-bezier(0.25, 1, 0.5, 1), opacity var(--speed-keys), filter calc(var(--speed-keys) / 2) ease-in-out;
         }
         
         #mainKeys { transform: translateX(0); opacity: 1; pointer-events: auto; }
@@ -67,7 +79,8 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20;
             display: flex; flex-direction: column; gap: 15px; padding: 15px; background: var(--bg-color); overflow-y: auto; 
             transform: translateY(100%); opacity: 0; pointer-events: none;
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s;
+            /* Uppdaterad transition */
+            transition: transform var(--speed-conv) cubic-bezier(0.25, 1, 0.5, 1), opacity var(--speed-conv), filter calc(var(--speed-conv) / 2) ease-in-out;
         }
         
         .conv-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
@@ -76,19 +89,21 @@
         .conv-op-btn { background: var(--btn-op); color: var(--accent) !important; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; height: 50px; flex: 1; }
         .fetch-btn { background: var(--accent); color: var(--bg-color) !important; font-size: 1rem; padding: 15px; flex: 0.8; border: none; border-radius: 8px; font-weight: bold; align-self: flex-start; }
 
-        /* NYTT: Panel animationer in från botten och toppen */
+        /* Panel animationer */
         .panel { 
             display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             z-index: 100; flex-direction: column; 
             visibility: hidden; pointer-events: none; background: transparent; 
-            transition: background 0.4s, visibility 0.4s; 
+            transition: background var(--speed-panel), visibility var(--speed-panel); 
         }
         .panel.show { visibility: visible; pointer-events: auto; background: var(--bg-color); }
         
-        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--panel-bg); transform: translateY(-100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; }
+        /* Uppdaterad transition på filter */
+        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--panel-bg); transform: translateY(-100%); transition: transform var(--speed-panel) cubic-bezier(0.25, 1, 0.5, 1), filter calc(var(--speed-panel) / 2) ease-in-out; z-index: 2; }
         .panel.show .panel-header { transform: translateY(0); }
         
-        .panel-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); background: var(--bg-color); z-index: 1; }
+        /* Uppdaterad transition på filter */
+        .panel-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; transform: translateY(100%); transition: transform var(--speed-panel) cubic-bezier(0.25, 1, 0.5, 1), filter calc(var(--speed-panel) / 2) ease-in-out; background: var(--bg-color); z-index: 1; }
         .panel.show .panel-content { transform: translateY(0); }
 
         .design-row { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 12px; }
@@ -100,6 +115,12 @@
         .recent-colors { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
         .color-swatch { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: 0.2s; }
 
+        .anim-setting-group { display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; }
+        .anim-setting-label { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: bold; }
+        .anim-setting-controls { display: flex; gap: 10px; align-items: center; }
+        .anim-setting-controls span { font-size: 0.75rem; color: var(--text-muted); width: 65px; }
+        .anim-setting-controls input[type=range] { flex: 1; accent-color: var(--accent); }
+
         .custom-item { background: var(--panel-bg); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
         .del-btn { background: #ef4444; color: white !important; font-size: 0.9rem; padding: 10px; border-radius: 6px; }
         .edit-btn { background: var(--accent); color: var(--bg-color) !important; font-size: 0.9rem; padding: 10px; border-radius: 6px; font-weight: bold; }
@@ -110,13 +131,13 @@
         .key-edit-row input { flex: 1; padding: 10px; border-radius: 6px; border: none; background: rgba(255,255,255,0.1); color: var(--text-color); }
         .key-edit-title { margin: 15px 0 5px 0; font-weight: bold; color: var(--accent); }
         
-        /* Animation för knapp-vändning */
+        /* Animation för knapp-vändning med dynamisk blur */
         @keyframes flipX {
-            0% { transform: rotateX(0deg); }
-            50% { transform: rotateX(90deg); opacity: 0.5; }
-            100% { transform: rotateX(0deg); opacity: 1; }
+            0% { transform: rotateX(0deg); filter: blur(0px); }
+            50% { transform: rotateX(90deg); opacity: 0.5; filter: blur(var(--blur-flip)); }
+            100% { transform: rotateX(0deg); opacity: 1; filter: blur(0px); }
         }
-        .flip-animate { animation: flipX 0.3s ease; }
+        .flip-animate { animation: flipX var(--speed-flip) ease; }
     </style>
 </head>
 <body>
@@ -218,7 +239,7 @@
         </div>
     </div>
     
-    <div class="version-text">V 5.5</div>
+    <div class="version-text">V 5.6</div>
 </div>
 
 <!-- HISTORIK -->
@@ -253,6 +274,55 @@
             <span>Senaste färger:</span>
             <div id="recentColors" class="recent-colors"></div>
         </div>
+
+        <!-- HASTIGHET & MOTION BLUR INSTÄLLNINGAR -->
+        <div class="design-row">
+            <h3 style="margin:0; color:var(--accent);">Animationer & Motion Blur 🎬</h3>
+            
+            <div class="anim-setting-group">
+                <div class="anim-setting-label"><span>Tangentbord Glid</span><span id="lbl-speed-keys">0.4s / 0px</span></div>
+                <div class="anim-setting-controls">
+                    <!-- Uppdaterade gränser (min 0, max 9s) -->
+                    <span>Hastighet:</span><input type="range" min="0" max="9" step="0.1" id="speed-keys" oninput="updateAnimSetting('--speed-keys', this.value + 's', 'lbl-speed-keys')">
+                </div>
+                <div class="anim-setting-controls">
+                    <span>Blur:</span><input type="range" min="0" max="15" step="1" id="blur-keys" oninput="updateAnimSetting('--blur-keys', this.value + 'px', 'lbl-speed-keys')">
+                </div>
+            </div>
+
+            <div class="anim-setting-group">
+                <div class="anim-setting-label"><span>Konverterare</span><span id="lbl-speed-conv">0.4s / 0px</span></div>
+                <div class="anim-setting-controls">
+                    <span>Hastighet:</span><input type="range" min="0" max="9" step="0.1" id="speed-conv" oninput="updateAnimSetting('--speed-conv', this.value + 's', 'lbl-speed-conv')">
+                </div>
+                <div class="anim-setting-controls">
+                    <span>Blur:</span><input type="range" min="0" max="15" step="1" id="blur-conv" oninput="updateAnimSetting('--blur-conv', this.value + 'px', 'lbl-speed-conv')">
+                </div>
+            </div>
+
+            <div class="anim-setting-group">
+                <div class="anim-setting-label"><span>Paneler & Meny</span><span id="lbl-speed-panel">0.4s / 0px</span></div>
+                <div class="anim-setting-controls">
+                    <span>Hastighet:</span><input type="range" min="0" max="9" step="0.1" id="speed-panel" oninput="updateAnimSetting('--speed-panel', this.value + 's', 'lbl-speed-panel')">
+                </div>
+                <div class="anim-setting-controls">
+                    <span>Blur:</span><input type="range" min="0" max="15" step="1" id="blur-panel" oninput="updateAnimSetting('--blur-panel', this.value + 'px', 'lbl-speed-panel')">
+                </div>
+            </div>
+
+            <div class="anim-setting-group">
+                <div class="anim-setting-label"><span>Knapp-vändning</span><span id="lbl-speed-flip">0.3s / 0px</span></div>
+                <div class="anim-setting-controls">
+                    <span>Hastighet:</span><input type="range" min="0" max="9" step="0.1" id="speed-flip" oninput="updateAnimSetting('--speed-flip', this.value + 's', 'lbl-speed-flip')">
+                </div>
+                <div class="anim-setting-controls">
+                    <span>Blur:</span><input type="range" min="0" max="15" step="1" id="blur-flip" oninput="updateAnimSetting('--blur-flip', this.value + 'px', 'lbl-speed-flip')">
+                </div>
+            </div>
+
+            <button class="top-btn" style="background: rgba(255,255,255,0.05); color: var(--text-color)!important; padding: 10px;" onclick="resetAnimSettings()">Återställ Animationer</button>
+        </div>
+
         <div class="design-row">
             <span>Mått & Formler:</span>
             <button class="top-btn" style="background:var(--accent); color:var(--bg-color)!important; padding: 15px;" onclick="togglePanel('customPanel')">➕ Skapa egna mått & enheter</button>
@@ -324,6 +394,86 @@
     let customFormulas = safeLoad('catcalc_custom', {});
     let customUnits = safeLoad('catcalc_custom_units', {});
     
+    /* Animationer och Motion Blur hantering */
+    const defaultAnimSettings = {
+        '--speed-keys': '0.4s', '--blur-keys': '0px',
+        '--speed-conv': '0.4s', '--blur-conv': '0px',
+        '--speed-panel': '0.4s', '--blur-panel': '0px',
+        '--speed-flip': '0.3s', '--blur-flip': '0px'
+    };
+    let animSettings = safeLoad('catcalc_anim_settings', defaultAnimSettings);
+
+    function applyAnimSettings() {
+        for (let k in animSettings) {
+            document.documentElement.style.setProperty(k, animSettings[k]);
+        }
+    }
+    applyAnimSettings();
+
+    function updateAnimSetting(varName, val, labelId) {
+        animSettings[varName] = val;
+        document.documentElement.style.setProperty(varName, val);
+        localStorage.setItem('catcalc_anim_settings', JSON.stringify(animSettings));
+        updateAnimLabel(labelId, varName);
+    }
+
+    function updateAnimLabel(labelId, baseVarName) {
+        let prefix = baseVarName.replace('--speed-', '').replace('--blur-', '');
+        let speed = (animSettings['--speed-' + prefix] || '0.4s');
+        let blur = (animSettings['--blur-' + prefix] || '0px');
+        let el = document.getElementById(labelId);
+        if (el) el.innerText = `${speed} / ${blur}`;
+    }
+
+    function syncAnimSettingsUI() {
+        ['keys', 'conv', 'panel', 'flip'].forEach(type => {
+            let speedVal = parseFloat(animSettings['--speed-' + type] || '0.4');
+            let blurVal = parseFloat(animSettings['--blur-' + type] || '0');
+
+            let speedEl = document.getElementById('speed-' + type);
+            let blurEl = document.getElementById('blur-' + type);
+
+            if (speedEl) speedEl.value = speedVal;
+            if (blurEl) blurEl.value = blurVal;
+
+            updateAnimLabel('lbl-speed-' + type, '--speed-' + type);
+        });
+    }
+
+    function resetAnimSettings() {
+        animSettings = JSON.parse(JSON.stringify(defaultAnimSettings));
+        applyAnimSettings();
+        localStorage.setItem('catcalc_anim_settings', JSON.stringify(animSettings));
+        syncAnimSettingsUI();
+    }
+
+    function getAnimDuration(varName) {
+        let val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        if (val.endsWith('ms')) return parseFloat(val);
+        if (val.endsWith('s')) return parseFloat(val) * 1000;
+        return 400;
+    }
+
+    /* UPPATERAD LOGIK FÖR BÄTTRE MOTION BLUR SYNK */
+    function triggerMotionBlur(element, blurVarName, durationMs) {
+        let blurPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(blurVarName)) || 0;
+        if (blurPx > 0) {
+            element.style.filter = `blur(${blurPx}px)`;
+            
+            // Börja tona ut bluren när vi nått hälften av animationen. 
+            // Eftersom filter-CSS:en också är inställd på halva tiden så dör 
+            // bluren ut exakt samtidigt som objektet stannar.
+            setTimeout(() => {
+                element.style.filter = 'blur(0px)';
+            }, durationMs / 2);
+
+            // Ta bort stilregeln helt när allt har stannat.
+            setTimeout(() => {
+                element.style.filter = 'none';
+            }, durationMs);
+        }
+    }
+
     const baseUnitRates = {
         "Längd": {
             "nm (Nanometer)": 0.000000001, "µm (Mikrometer)": 0.000001, "mm (Millimeter)": 0.001, "cm (Centimeter)": 0.01,
@@ -377,7 +527,7 @@
             customKeys.adv[i] = { lbl: document.getElementById(`advLbl_${i}`).value || ' ', val: document.getElementById(`advVal_${i}`).value || ' ' };
         }
         localStorage.setItem('catcalc_keys_config', JSON.stringify(customKeys));
-        updateQuickAdvKeys(advMode === 1);
+        updateQuickAdvKeys(advMode === 1, false);
         togglePanel('keysPanel'); 
     }
 
@@ -536,17 +686,21 @@
     advBtn.addEventListener('pointerleave', () => clearTimeout(advTimer));
 
     function setAdvMode(mode) {
+        let prevMode = advMode;
         advMode = mode; 
         advBtn.classList.remove('active'); advBtn.innerText = "Avancerat";
         
         if (advMode === 0) { 
-            updateQuickAdvKeys(false); 
+            // Snurra endast om vi växlar direkt från Snabb-Adv (1). Inte från Full Adv (2).
+            updateQuickAdvKeys(false, prevMode === 1); 
         } 
         else if (advMode === 1) { 
-            advBtn.classList.add('active'); updateQuickAdvKeys(true); 
+            advBtn.classList.add('active'); 
+            updateQuickAdvKeys(true, true); 
         } 
         else if (advMode === 2) { 
             advBtn.classList.add('active'); advBtn.innerText = "Full Adv ★"; 
+            updateQuickAdvKeys(false, false);
         }
         refreshKeyboardVisibility();
     }
@@ -555,13 +709,15 @@
         const mainKeys = document.getElementById('mainKeys');
         const fullAdvKeys = document.getElementById('fullAdvKeys');
         const conv = document.getElementById('convArea');
+        const dur = getAnimDuration('--speed-keys');
         
-        // Om konverteraren är öppen, dölj tangentborden i bakgrunden
+        triggerMotionBlur(mainKeys, '--blur-keys', dur);
+        triggerMotionBlur(fullAdvKeys, '--blur-keys', dur);
+
         if (conv.style.pointerEvents === 'auto') {
             mainKeys.style.opacity = '0'; mainKeys.style.pointerEvents = 'none';
             fullAdvKeys.style.opacity = '0'; fullAdvKeys.style.pointerEvents = 'none';
         } else {
-            // Animera tangentborden från sidorna beroende på läge
             if (advMode === 2) {
                 mainKeys.style.transform = 'translateX(-100%)'; mainKeys.style.opacity = '0'; mainKeys.style.pointerEvents = 'none';
                 fullAdvKeys.style.transform = 'translateX(0)'; fullAdvKeys.style.opacity = '1'; fullAdvKeys.style.pointerEvents = 'auto';
@@ -572,28 +728,36 @@
         }
     }
 
-    function updateQuickAdvKeys(isAdv) {
+    function updateQuickAdvKeys(isAdv, animate = true) {
         const btns = [
             document.getElementById('op-paren'), document.getElementById('op-perc'),
             document.getElementById('op-div'), document.getElementById('op-mult'),
             document.getElementById('op-sub'), document.getElementById('op-add')
         ];
         const conf = isAdv ? customKeys.adv : customKeys.normal;
-        
+        const dur = getAnimDuration('--speed-flip');
+
         btns.forEach((btn, i) => {
-            // Trigga 3D-flipp animeringen
-            btn.classList.remove('flip-animate');
-            void btn.offsetWidth; // Force reflow
-            btn.classList.add('flip-animate');
-            
-            // Ändra texten mitt i snurren
-            setTimeout(() => {
+            if (animate) {
+                btn.classList.remove('flip-animate');
+                void btn.offsetWidth; // Force reflow
+                btn.classList.add('flip-animate');
+                
+                setTimeout(() => {
+                    btn.innerHTML = conf[i].lbl;
+                    btn.onclick = () => {
+                        if(conf[i].val === '( )') insertSmartParenthesis();
+                        else insertAtCursor(conf[i].val);
+                    };
+                }, dur / 2);
+            } else {
+                btn.classList.remove('flip-animate');
                 btn.innerHTML = conf[i].lbl;
                 btn.onclick = () => {
                     if(conf[i].val === '( )') insertSmartParenthesis();
                     else insertAtCursor(conf[i].val);
                 };
-            }, 150);
+            }
         });
     }
 
@@ -601,7 +765,10 @@
     function toggleConverter() {
         const conv = document.getElementById('convArea'); 
         const isOpening = conv.style.pointerEvents !== 'auto';
+        const dur = getAnimDuration('--speed-conv');
         
+        triggerMotionBlur(conv, '--blur-conv', dur);
+
         if (isOpening) { 
             conv.style.transform = 'translateY(0)'; conv.style.opacity = '1'; conv.style.pointerEvents = 'auto';
             initConvCategory(); 
@@ -794,24 +961,28 @@
     function pasteAndOp(op) { if(lastConvResult) { insertAtCursor(lastConvResult + op); toggleConverter(); } }
     function pasteAndCalc() { if(lastConvResult) { insertAtCursor(lastConvResult); calculate(); toggleConverter(); } }
 
-    // --- ANIMERADE PANELER ---
+    /* PANELER */
     function togglePanel(id) {
         const p = document.getElementById(id); 
         const isOpen = p.classList.contains('show');
+        const dur = getAnimDuration('--speed-panel');
         
-        // Stäng alla först
         document.querySelectorAll('.panel').forEach(el => el.classList.remove('show')); 
         
         if(!isOpen) { 
+            const header = p.querySelector('.panel-header');
+            const content = p.querySelector('.panel-content');
+            if (header) triggerMotionBlur(header, '--blur-panel', dur);
+            if (content) triggerMotionBlur(content, '--blur-panel', dur);
+
             p.classList.add('show'); 
             if(id === 'histPanel') renderHistoryUI(); 
-            if(id === 'designPanel') syncDesignUI(); 
+            if(id === 'designPanel') { syncDesignUI(); syncAnimSettingsUI(); }
             if(id === 'customPanel') { renderCustomList(); updateBaseUnitLabel(); }
             if(id === 'keysPanel') buildKeysEditor();
         }
     }
     
-    // FÄRDIGSTÄLLD HISTORIK-FUNKTION OCH INITIERING
     function saveToHistory(eq, res) {
         historyData.unshift({ eq, res });
         if (historyData.length > 50) historyData.pop();
@@ -832,10 +1003,7 @@
         `).join('');
     }
 
-    // Ladda in sparad design när appen startar
     loadDesign();
-    
-    // Säkerställ att tangentbordet ritas korrekt vid uppstart
     refreshKeyboardVisibility();
 
 </script>
